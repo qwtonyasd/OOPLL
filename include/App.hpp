@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include "pch.hpp"
+#include "TowerSlot.hpp"
 #include "MapManager.hpp"
 
 class App {
@@ -22,9 +23,9 @@ public:
 
 private:
     void ValidTask();
-
-private:
+    std::vector<std::shared_ptr<TowerSlot>> m_TowerSlots;
     std::unique_ptr<MapManager> m_MapManager;
+private:
     State m_CurrentState = State::START;
 };
 

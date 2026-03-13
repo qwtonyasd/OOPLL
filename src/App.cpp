@@ -1,28 +1,38 @@
 #include "App.hpp"
 #include "Map.hpp"
+#include "TowerSlot.hpp" // 記得檢查這行
 #include "Util/Image.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
-#include <iostream> // 確保有這行
+#include <iostream>
 
 void App::Start() {
     LOG_TRACE("Start");
 
+    // 1. 先初始化基礎 Manager
     m_MapManager = std::make_unique<MapManager>();
 
-    // 這裡換成我幫你預估的 Kingdom Rush 地圖座標，你可以先跑跑看準不準
+    // 2. 初始化塔位 (這只是把物件裝進 vector，還沒畫出來)
+    // 嘗試將座標數值縮小，讓它們往中心靠攏
+   // 根據最後截圖微調的相對位置
+    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{-110, 110}));   // 頂端路口
+    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{-100, 50}));   // 左上彎道內側
+    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{-80, -50}));   // U彎左側
+    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{30, -50}));    // U彎右側
+    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{130, -100}));  // 下方橫向路邊
+    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{0, 20}));      // 畫面中心附近的小土堆
+    // 3. 設定地圖路徑
     std::vector<glm::vec2> lv1Path = {
-        { -15.0f,   450.0f},  // 起點 (上方)
-        { -15.0f,   180.0f},  // 彎道1
-        {-245.0f,    10.0f},  // 彎道2 (左側)
-        {-100.0f,  -200.0f},  // 彎道3
-        { 250.0f,  -140.0f},  // 經過村莊
-        { 550.0f,  -140.0f}   // 終點 (右側)
+        { -15.0f,   450.0f},
+        { -15.0f,   180.0f},
+        {-245.0f,    10.0f},
+        {-100.0f,  -200.0f},
+        { 250.0f,  -140.0f},
+        { 550.0f,  -140.0f}
     };
 
     auto level1 = std::make_shared<Map>("../PTSD/assets/sprites/images/287.png", lv1Path);
-
     m_MapManager->AddLevel(1, level1);
     m_MapManager->SwitchLevel(1);
 
@@ -30,25 +40,24 @@ void App::Start() {
 }
 
 void App::Update() {
+    // --- 繪製區區 (每一幀都會跑) ---
+
+    // 1. 先畫地圖 (最底層)
     m_MapManager->Draw();
 
-    // === 偵錯工具：加在這裡 ===
-    // 取得目前滑鼠座標
+    // 2. 再畫塔位 (疊在上面)
+    for (auto& slot : m_TowerSlots) {
+        slot->Draw();
+    }
+
+    // --- 偵錯與輸入處理 ---
     glm::vec2 mousePos = Util::Input::GetCursorPosition();
 
-    // 做法 A：如果 Console 沒反應，我們直接按空白鍵時強迫印出
     if (Util::Input::IsKeyDown(Util::Keycode::SPACE)) {
         std::cout << "Coords: {" << mousePos.x << ", " << mousePos.y << "}," << std::endl;
         LOG_INFO("Mouse at: {}, {}", mousePos.x, mousePos.y);
     }
 
-    /* 做法 B (最強招)：直接把座標顯示在視窗標題列
-     * 這樣你連看 Console 都不用，滑鼠移到哪，標題就會顯示到哪
-     */
-    // 注意：這裡假設你的框架有提供設定標題的功能，若編譯不過可刪除此行
-    // SDL_SetWindowTitle(m_Context->GetWindow(), ("Pos: " + std::to_string(mousePos.x) + ", " + std::to_string(mousePos.y)).c_str());
-
-    // 結束判斷
     if (Util::Input::IsKeyUp(Util::Keycode::ESCAPE) || Util::Input::IfExit()) {
         m_CurrentState = State::END;
     }

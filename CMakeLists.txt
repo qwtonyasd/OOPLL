@@ -37,6 +37,7 @@ add_executable(${PROJECT_NAME}
     ${HEADER_FILES}
         include/Map.hpp
         include/MapManager.hpp
+        include/TowerSlot.hpp
 )
 
 if(MSVC)
