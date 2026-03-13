@@ -22,10 +22,14 @@ public:
     void End();
 
 private:
-    void ValidTask();
+    /**
+     * @brief 核心 OOP 方法：統一處理關卡切換
+     * 負責叫 MapManager 換地圖，並重新同步生成 m_TowerSlots
+     */
+    void ChangeLevel(int levelId);
+
     std::vector<std::shared_ptr<TowerSlot>> m_TowerSlots;
     std::unique_ptr<MapManager> m_MapManager;
-private:
     State m_CurrentState = State::START;
 };
 

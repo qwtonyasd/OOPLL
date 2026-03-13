@@ -1,7 +1,6 @@
 #include "App.hpp"
-#include "Map.hpp"
-#include "TowerSlot.hpp" // 記得檢查這行
-#include "Util/Image.hpp"
+#include "MapFactory.hpp"  // 引入工廠
+#include "TowerSlot.hpp"
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
@@ -10,54 +9,69 @@
 void App::Start() {
     LOG_TRACE("Start");
 
-    // 1. 先初始化基礎 Manager
+    // 1. 初始化 Manager
     m_MapManager = std::make_unique<MapManager>();
 
-    // 2. 初始化塔位 (這只是把物件裝進 vector，還沒畫出來)
-    // 嘗試將座標數值縮小，讓它們往中心靠攏
-   // 根據最後截圖微調的相對位置
-    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{-110, 110}));   // 頂端路口
-    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{-100, 50}));   // 左上彎道內側
-    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{-80, -50}));   // U彎左側
-    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{30, -50}));    // U彎右側
-    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{130, -100}));  // 下方橫向路邊
-    m_TowerSlots.push_back(std::make_shared<TowerSlot>(glm::vec2{0, 20}));      // 畫面中心附近的小土堆
-    // 3. 設定地圖路徑
-    std::vector<glm::vec2> lv1Path = {
-        { -15.0f,   450.0f},
-        { -15.0f,   180.0f},
-        {-245.0f,    10.0f},
-        {-100.0f,  -200.0f},
-        { 250.0f,  -140.0f},
-        { 550.0f,  -140.0f}
-    };
-
-    auto level1 = std::make_shared<Map>("../PTSD/assets/sprites/images/287.png", lv1Path);
-    m_MapManager->AddLevel(1, level1);
-    m_MapManager->SwitchLevel(1);
+    // 2. 初始載入第一關 (這會自動建立地圖與塔位)
+    ChangeLevel(1);
 
     m_CurrentState = State::UPDATE;
 }
 
-void App::Update() {
-    // --- 繪製區區 (每一幀都會跑) ---
+void App::ChangeLevel(int levelId) {
+    LOG_INFO("Loading Level: {}", levelId);
 
-    // 1. 先畫地圖 (最底層)
+    // 1. 叫 MapManager 透過工廠載入新地圖物件
+    m_MapManager->LoadLevel(levelId);
+
+    // 2. 清除舊有的塔位物件
+    m_TowerSlots.clear();
+
+    // 3. 從當前地圖取得新座標，並生成對應的 TowerSlot 物件
+    auto currentMap = m_MapManager->GetCurrentMap();
+    if (currentMap) {
+        const auto& slotPositions = currentMap->GetTowerSlots();
+        for (const auto& pos : slotPositions) {
+            m_TowerSlots.push_back(std::make_shared<TowerSlot>(pos));
+        }
+    }
+}
+
+void App::Update() {
+    // --- 繪製區區 (由底層往上畫) ---
+
+    // 1. 畫地圖 (最底層，ZIndex 通常為負)
     m_MapManager->Draw();
 
-    // 2. 再畫塔位 (疊在上面)
+    // 2. 畫塔位 (疊在地圖上方)
     for (auto& slot : m_TowerSlots) {
         slot->Draw();
     }
 
-    // --- 偵錯與輸入處理 ---
-    glm::vec2 mousePos = Util::Input::GetCursorPosition();
-
-    if (Util::Input::IsKeyDown(Util::Keycode::SPACE)) {
-        std::cout << "Coords: {" << mousePos.x << ", " << mousePos.y << "}," << std::endl;
-        LOG_INFO("Mouse at: {}, {}", mousePos.x, mousePos.y);
+    // --- 關卡切換邏輯 (範例：按下數字鍵 1 或 2) ---
+    if (Util::Input::IsKeyDown(Util::Keycode::NUM_1)) {
+        ChangeLevel(1);
+    }
+    if (Util::Input::IsKeyDown(Util::Keycode::NUM_2)) {
+        ChangeLevel(2);
+    }
+    if (Util::Input::IsKeyDown(Util::Keycode::NUM_3)) {
+        ChangeLevel(3);
+    }
+    if (Util::Input::IsKeyDown(Util::Keycode::NUM_4)) {
+        ChangeLevel(4);
+    }
+    if (Util::Input::IsKeyDown(Util::Keycode::NUM_5)) {
+        ChangeLevel(5);
     }
 
+    // --- 偵錯功能：按住空白鍵記錄座標 (方便你設計新地圖) ---
+    if (Util::Input::IsKeyDown(Util::Keycode::SPACE)) {
+        glm::vec2 mousePos = Util::Input::GetCursorPosition();
+        std::cout << "Coordinate: {" << mousePos.x << ", " << mousePos.y << "}," << std::endl;
+    }
+
+    // --- 結束處理 ---
     if (Util::Input::IsKeyUp(Util::Keycode::ESCAPE) || Util::Input::IfExit()) {
         m_CurrentState = State::END;
     }

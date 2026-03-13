@@ -2,31 +2,38 @@
 #define MAP_HPP
 
 #include <vector>
+#include <string>
 #include <memory>
 #include "Util/GameObject.hpp"
 #include "Util/Image.hpp"
 
+// 封裝每一關的靜態資料
+struct LevelConfig {
+    int levelId;
+    std::string imagePath;
+    std::vector<std::vector<glm::vec2>> routes; // 支援多條路徑
+    std::vector<glm::vec2> towerSlotPositions;  // 該地圖的塔位座標
+};
+
 class Map : public Util::GameObject {
 public:
-    // 使用 glm::vec2 作為路徑點類型
-    Map(const std::string& imagePath, const std::vector<glm::vec2>& waypoints)
-        : m_Waypoints(waypoints) {
-
-        // 1. 設定圖片 (m_Drawable 是繼承自 GameObject 的 protected 成員)
-        m_Drawable = std::make_shared<Util::Image>(imagePath);
-
-        // 2. 設定 Z 軸 (地圖通常在最後面，設一個較小的負數或 0)
+    explicit Map(const LevelConfig& config) : m_Config(config) {
+        m_Drawable = std::make_shared<Util::Image>(config.imagePath);
         m_ZIndex = -10.0f;
-
-        // 3. 確保位置在中心
-        m_Transform.translation = {0, 0};
     }
 
-    // 取得該地圖的路徑點
-    const std::vector<glm::vec2>& GetWaypoints() const { return m_Waypoints; }
+    // OOP: 將「選路徑」的行為封裝在 Map 物件內部
+    const std::vector<glm::vec2>& GetRandomRoute() const {
+        int index = rand() % m_Config.routes.size();
+        return m_Config.routes[index];
+    }
+
+    const std::vector<glm::vec2>& GetTowerSlots() const {
+        return m_Config.towerSlotPositions;
+    }
 
 private:
-    std::vector<glm::vec2> m_Waypoints;
+    LevelConfig m_Config;
 };
 
 #endif
