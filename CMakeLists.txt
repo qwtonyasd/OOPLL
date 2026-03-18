@@ -39,6 +39,10 @@ add_executable(${PROJECT_NAME}
         include/MapManager.hpp
         include/TowerSlot.hpp
         include/MapFactory.hpp
+        include/Unit.hpp
+        include/EnemyFactory.hpp
+        include/Enemy.hpp
+        include/ControlStage.hpp
 )
 
 if(MSVC)

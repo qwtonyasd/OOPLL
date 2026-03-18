@@ -5,16 +5,12 @@
 #include <vector>
 #include "pch.hpp"
 #include "TowerSlot.hpp"
-#include "MapManager.hpp"
+#include "ControlStage.hpp" // 引入新的大腦
+#include "Enemy.hpp"        // 引入怪物基類
 
 class App {
 public:
-    enum class State {
-        START,
-        UPDATE,
-        END,
-    };
-
+    enum class State { START, UPDATE, END };
     State GetCurrentState() const { return m_CurrentState; }
 
     void Start();
@@ -22,14 +18,12 @@ public:
     void End();
 
 private:
-    /**
-     * @brief 核心 OOP 方法：統一處理關卡切換
-     * 負責叫 MapManager 換地圖，並重新同步生成 m_TowerSlots
-     */
     void ChangeLevel(int levelId);
 
+    std::unique_ptr<ControlStage> m_ControlStage;      // 關卡大腦
     std::vector<std::shared_ptr<TowerSlot>> m_TowerSlots;
-    std::unique_ptr<MapManager> m_MapManager;
+    std::vector<std::shared_ptr<Enemy>> m_Enemies;     // 怪物容器 (修復紅字)
+
     State m_CurrentState = State::START;
 };
 

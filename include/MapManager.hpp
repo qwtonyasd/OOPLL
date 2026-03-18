@@ -1,28 +1,47 @@
 #ifndef MAP_MANAGER_HPP
 #define MAP_MANAGER_HPP
 
+#include <map>
+#include <memory>
 #include "Map.hpp"
-#include "MapFactory.hpp"
 
 class MapManager {
 public:
     MapManager() = default;
 
-    void LoadLevel(int levelId) {
-        // 直接透過工廠取得物件
-        m_CurrentMap = MapFactory::CreateLevel(levelId);
+    // 現在直接傳入 Map 物件
+    void AddLevel(int levelId, const std::shared_ptr<Map>& map) {
+        m_Levels[levelId] = map;
+        if (m_CurrentLevelId == -1) m_CurrentLevelId = levelId;
     }
 
-    void Draw() {
-        if (m_CurrentMap) {
-            m_CurrentMap->Draw();
+    void SwitchLevel(int levelId) {
+        if (m_Levels.count(levelId)) {
+            m_CurrentLevelId = levelId;
         }
     }
 
-    std::shared_ptr<Map> GetCurrentMap() const { return m_CurrentMap; }
+    // 取得當前關卡的隨機路線（給哥布林用）
+    const std::vector<glm::vec2>& GetRandomRoute() const {
+        return m_Levels.at(m_CurrentLevelId)->GetRandomRoute();
+    }
+
+    // 取得當前關卡的塔位座標
+    const std::vector<glm::vec2>& GetTowerSlots() const {
+        return m_Levels.at(m_CurrentLevelId)->GetTowerSlots();
+    }
+
+    void Draw() {
+        if (m_Levels.count(m_CurrentLevelId)) {
+            m_Levels[m_CurrentLevelId]->Draw();
+        }
+    }
+
+    std::shared_ptr<Map> GetCurrentMap() { return m_Levels[m_CurrentLevelId]; }
 
 private:
-    std::shared_ptr<Map> m_CurrentMap;
+    std::map<int, std::shared_ptr<Map>> m_Levels;
+    int m_CurrentLevelId = -1;
 };
 
 #endif
