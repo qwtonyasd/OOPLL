@@ -10,7 +10,7 @@ public:
         config.levelId = levelId;
 
         if (levelId == 1) {
-            config.imagePath = "../PTSD/assets/sprites/images/287.png";
+            config.imagePath = "../PTSD/assets/sprites/images/Map/1.png";
             // 設計 4 條路線
             config.routes = {
                 { {-50, 295}, {-44, 102}, {-71, 82}, {-152, 54},{-184, 13},{-203, -24},{-201, -74}, {-170, -112},{-117, -131},{-42, -137},{27, -125},{90, -140},{146, -149},{182, -118},{228, -82},{283, -72},{371, -75},}, // 路線 1
@@ -23,22 +23,22 @@ public:
             };
         }
         else if (levelId == 2) {
-            config.imagePath = "../PTSD/assets/sprites/images/1615.png";
+            config.imagePath = "../PTSD/assets/sprites/images/Map/2.png";
             config.routes = { /* 設定第 2 關的 4 條線 */ };
             config.towerSlotPositions = { {88, 146}, {90, 93} , {-54, 145}, {-105, 26}, {-49, -91}, {27, -73}, {36, -191}};
         }
         else if (levelId == 3) {
-            config.imagePath = "../PTSD/assets/sprites/images/1583.png";
+            config.imagePath = "../PTSD/assets/sprites/images/Map/3.png";
             config.routes = { /* 設定第 2 關的 4 條線 */ };
             config.towerSlotPositions = { {-26, 205}, {-88, 186},{-21, 96},{51, 110},{129, 115},{114, 13},{-81, -39},{-5, -68}, {67, -92},{225, -165},{-153, -139},{-67, -173}};
         }
         else if (levelId == 4) {
-            config.imagePath = "../PTSD/assets/sprites/images/1576.png";
+            config.imagePath = "../PTSD/assets/sprites/images/Map/4.png";
             config.routes = { /* 設定第 2 關的 4 條線 */ };
             config.towerSlotPositions = { {-265, -51}, {110, -201},{239, -180}, {-27, -85},{39, -97},{109, -94},{191, -56},{197, 16},{161, 81},{53, 163},{-16, 164},{-86, 152},{-137, 118},{-160, 47},{-137, 1} };
         }
         else if (levelId == 5) {
-            config.imagePath = "../PTSD/assets/sprites/images/1573.png";
+            config.imagePath = "../PTSD/assets/sprites/images/Map/5.png";
             config.routes = { /* 設定第 2 關的 4 條線 */ };
             config.towerSlotPositions = { {-119, -178},{-165, -43},{-96, 59},{-238, 124},{38, 198},{172, 104}, {216, 67},{5, -33},{6, -82},{134, -35},{120, -80},{114, -137}};
         }
