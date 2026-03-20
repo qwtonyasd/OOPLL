@@ -43,6 +43,8 @@ add_executable(${PROJECT_NAME}
         include/EnemyFactory.hpp
         include/Enemy.hpp
         include/ControlStage.hpp
+        include/TowerManager.hpp
+        include/Tower.hpp
 )
 
 if(MSVC)
