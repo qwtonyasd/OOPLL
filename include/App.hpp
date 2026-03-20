@@ -5,8 +5,9 @@
 #include <vector>
 #include "pch.hpp"
 #include "TowerSlot.hpp"
-#include "ControlStage.hpp" // 引入新的大腦
-#include "Enemy.hpp"        // 引入怪物基類
+#include "ControlStage.hpp"
+#include "Enemy.hpp"
+#include "Tower.hpp"        // 引入 Tower 以便辨識類型
 
 class App {
 public:
@@ -20,9 +21,12 @@ public:
 private:
     void ChangeLevel(int levelId);
 
-    std::unique_ptr<ControlStage> m_ControlStage;      // 關卡大腦
+    std::unique_ptr<ControlStage> m_ControlStage;
     std::vector<std::shared_ptr<TowerSlot>> m_TowerSlots;
-    std::vector<std::shared_ptr<Enemy>> m_Enemies;     // 怪物容器 (修復紅字)
+    std::vector<std::shared_ptr<Enemy>> m_Enemies;
+
+    // --- 新增：追蹤目前滑鼠懸停的塔位 ---
+    std::shared_ptr<TowerSlot> m_HoveredSlot = nullptr;
 
     State m_CurrentState = State::START;
 };
