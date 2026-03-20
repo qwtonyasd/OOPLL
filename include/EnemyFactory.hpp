@@ -11,7 +11,7 @@ public:
         switch (type) {
             case Type::GOBLIN:
                 // 哥布林：速度 200.0f，血量 50.0f
-                return std::make_shared<Enemy>(path, 200.0f, 50.0f, "../PTSD/assets/sprites/images/291.png");
+                return std::make_shared<Enemy>(path, 200.0f, 50.0f, "../PTSD/assets/sprites/images/Enemy/1.png");
             case Type::SLIME:
                 // 史萊姆：速度 80.0f (較慢)，血量 100.0f
                 return std::make_shared<Enemy>(path, 80.0f, 100.0f, "../assets/slime.png");

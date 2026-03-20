@@ -9,7 +9,7 @@ class TowerSlot : public Util::GameObject {
 public:
     TowerSlot(const glm::vec2& pos) {
         m_Transform.translation = pos;
-        SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/1.png"));
+        SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/TowerSlot/1.png"));
         SetZIndex(5.0f); // 讓基座顯示在地圖上方
     }
     void Draw() {

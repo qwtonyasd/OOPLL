@@ -67,7 +67,7 @@ protected:
 class ArcherTower : public Tower {
 public:
     ArcherTower(glm::vec2 pos)
-        : Tower(pos, "../assets/archer_tower.png", 250.0f, 0.7f, 15.0f) {}
+        : Tower(pos, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/1.png", 250.0f, 0.7f, 15.0f) {}
 
     void Attack(std::shared_ptr<Enemy> target, std::vector<std::shared_ptr<Enemy>>& allEnemies) override {
         (void)allEnemies;
@@ -80,7 +80,7 @@ public:
 class MageTower : public Tower {
 public:
     MageTower(glm::vec2 pos)
-        : Tower(pos, "../assets/mage_tower.png", 200.0f, 1.5f, 40.0f) {}
+        : Tower(pos, "../PTSD/assets/sprites/images/MageTower/TowerLevel1/1.png", 200.0f, 1.5f, 40.0f) {}
 
     void Attack(std::shared_ptr<Enemy> target, std::vector<std::shared_ptr<Enemy>>& allEnemies) override {
         (void)allEnemies;
@@ -93,7 +93,7 @@ public:
 class BombTower : public Tower {
 public:
     BombTower(glm::vec2 pos)
-        : Tower(pos, "../assets/bomb_tower.png", 180.0f, 2.5f, 50.0f) {}
+        : Tower(pos, "../PTSD/assets/sprites/images/BombTower/TowerLevel1/1.png", 180.0f, 2.5f, 50.0f) {}
 
     void Attack(std::shared_ptr<Enemy> target, std::vector<std::shared_ptr<Enemy>>& allEnemies) override {
         LOG_INFO("Bomb Tower performs AOE explosion!");
@@ -112,7 +112,7 @@ public:
 class Barracks : public Tower {
 public:
     Barracks(glm::vec2 pos)
-        : Tower(pos, "../assets/barracks.png", 150.0f, 4.0f, 5.0f) {}
+        : Tower(pos, "../PTSD/assets/sprites/images/BarracksTower/TowerLevel1/1.png", 150.0f, 4.0f, 5.0f) {}
 
     void Attack(std::shared_ptr<Enemy> target, std::vector<std::shared_ptr<Enemy>>& allEnemies) override {
         (void)allEnemies; (void)target;
