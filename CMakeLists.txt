@@ -45,6 +45,8 @@ add_executable(${PROJECT_NAME}
         include/ControlStage.hpp
         include/TowerManager.hpp
         include/Tower.hpp
+        include/WorldMap.hpp
+        include/BuildMenu.hpp
 )
 
 if(MSVC)

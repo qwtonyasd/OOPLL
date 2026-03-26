@@ -13,7 +13,7 @@
 // --- Tower 基類 ---
 class Tower : public Util::GameObject {
 public:
-    enum class Type { ARCHER, MAGE, BARRACKS, BOMB };
+    enum class Type {NONE,  ARCHER, MAGE, BARRACKS, BOMB };
 
     Tower(const glm::vec2& pos, const std::string& imgPath, float range, float cooldown, float damage)
         : m_Range(range), m_Cooldown(cooldown), m_Damage(damage) {
@@ -111,7 +111,7 @@ public:
 class Barracks : public Tower {
 public:
     Barracks(glm::vec2 pos)
-        : Tower(pos, "../PTSD/assets/sprites/images/BarracksTower/TowerLevel1/1.png", 150.0f, 4.0f, 5.0f) {}
+        : Tower(pos, "../PTSD/assets/sprites/images/BarracksTower/1.png", 150.0f, 4.0f, 5.0f) {}
 
     void Attack(std::shared_ptr<Enemy> target, std::vector<std::shared_ptr<Enemy>>& allEnemies) override {
         (void)allEnemies; (void)target;
