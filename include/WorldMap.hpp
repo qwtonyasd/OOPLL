@@ -14,11 +14,11 @@
 class WorldMap {
 public:
     WorldMap() {
-        m_Background = std::make_shared<Util::Image>("../assets/image_3e4c06.jpg");
-        m_FlagImage = std::make_shared<Util::Image>("../assets/flag.png");
+        m_Background = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/start/1.png");
+        m_FlagImage = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/Flag/1.png");
 
         m_LevelPositions = {
-            {-340, -160}, {-120, 40}, {150, -90}, {320, 110}, {480, -30}
+            {-240, -170}, {-120, 40}, {150, -90}, {320, 110}, {480, -30}
         };
     }
 
