@@ -4,7 +4,6 @@
 #include "Util/GameObject.hpp"
 #include "Util/Image.hpp"
 #include "Util/Time.hpp"
-#include "Util/Logger.hpp"
 #include "Enemy.hpp"
 #include <vector>
 #include <memory>
@@ -22,31 +21,14 @@ public:
 
     virtual ~Tower() = default;
 
-    // --- 關鍵新增：讓 Draw 變成虛擬函式 ---
     virtual void Draw() {
-        GameObject::Draw(); // 預設只畫塔建築物本身
+        GameObject::Draw();
     }
 
-    virtual void Update(std::vector<std::shared_ptr<Enemy>>& enemies) {
-        float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
-        m_Timer += dt;
-
-        if (m_Timer >= m_Cooldown) {
-            auto target = FindTarget(enemies);
-            if (target) {
-                Attack(target, enemies);
-                m_Timer = 0.0f;
-            }
-        }
-    }
-
-    virtual void Attack(std::shared_ptr<Enemy> target, std::vector<std::shared_ptr<Enemy>>& allEnemies) = 0;
-
-protected:
+    // 1. 先定義輔助函式，讓下方的 Update 可以找到它
     std::shared_ptr<Enemy> FindTarget(const std::vector<std::shared_ptr<Enemy>>& enemies) {
         std::shared_ptr<Enemy> closest = nullptr;
         float minDistance = m_Range;
-
         for (const auto& enemy : enemies) {
             float dist = glm::distance(m_Transform.translation, enemy->GetTransform().translation);
             if (dist < minDistance) {
@@ -57,9 +39,23 @@ protected:
         return closest;
     }
 
-    float m_Range;
-    float m_Cooldown;
-    float m_Damage;
+    // 2. 接著定義 Update
+    virtual void Update(std::vector<std::shared_ptr<Enemy>>& enemies) {
+        float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
+        m_Timer += dt;
+        if (m_Timer >= m_Cooldown) {
+            auto target = FindTarget(enemies); // 現在編譯器認識它了！
+            if (target) {
+                Attack(target, enemies);
+                m_Timer = 0.0f;
+            }
+        }
+    }
+
+    virtual void Attack(std::shared_ptr<Enemy> target, std::vector<std::shared_ptr<Enemy>>& allEnemies) = 0;
+
+protected:
+    float m_Range, m_Cooldown, m_Damage;
     float m_Timer = 0.0f;
 };
 
