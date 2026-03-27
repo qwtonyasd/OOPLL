@@ -37,7 +37,7 @@ public:
 
     void DrawAll() {
         for (auto& tower : m_Towers) {
-            tower->Draw();
+            tower->Draw(); // 這裡呼叫的是 GameObject::Draw
         }
     }
 

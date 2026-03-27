@@ -22,6 +22,11 @@ public:
 
     virtual ~Tower() = default;
 
+    // --- 關鍵新增：讓 Draw 變成虛擬函式 ---
+    virtual void Draw() {
+        GameObject::Draw(); // 預設只畫塔建築物本身
+    }
+
     virtual void Update(std::vector<std::shared_ptr<Enemy>>& enemies) {
         float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
         m_Timer += dt;
