@@ -47,6 +47,11 @@ add_executable(${PROJECT_NAME}
         include/Tower.hpp
         include/WorldMap.hpp
         include/BuildMenu.hpp
+        include/Projectile.hpp
+        include/Tower/ArcherTower.h
+        include/Tower/MageTower.h
+        include/Tower/BombTower.h
+        include/Tower/Barracks.h
 )
 
 if(MSVC)

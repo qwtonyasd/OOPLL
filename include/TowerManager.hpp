@@ -2,7 +2,11 @@
 #ifndef TOWER_MANAGER_HPP
 #define TOWER_MANAGER_HPP
 
-#include "Tower.hpp"
+#include "Tower.hpp"               // 基類
+#include "tower/ArcherTower.h"    // 新路徑
+#include "tower/MageTower.h"      // 新路徑
+#include "tower/BombTower.h"      // 新路徑
+#include "tower/Barracks.h"       // 新路徑
 
 class TowerManager {
 public:
