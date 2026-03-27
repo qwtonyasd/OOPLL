@@ -52,6 +52,9 @@ add_executable(${PROJECT_NAME}
         include/Tower/MageTower.h
         include/Tower/BombTower.h
         include/Tower/Barracks.h
+        src/Tower/ArcherTower.cpp
+        src/Tower/MageTower.cpp
+        src/Tower/BombTower.cpp
 )
 
 if(MSVC)
