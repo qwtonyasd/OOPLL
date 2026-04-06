@@ -57,6 +57,8 @@ add_executable(${PROJECT_NAME}
         src/Tower/BombTower.cpp
         include/GameManager.hpp
         src/Tower/Barracks.cpp
+        include/Hud.hpp
+        include/HudValue.hpp
 )
 
 if(MSVC)

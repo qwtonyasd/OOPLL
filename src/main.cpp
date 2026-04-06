@@ -1,5 +1,4 @@
 #include "App.hpp"
-
 #include "Core/Context.hpp"
 
 int main(int, char**) {
@@ -7,7 +6,8 @@ int main(int, char**) {
     App app;
 
     while (!context->GetExit()) {
-        switch (app.GetCurrentState()) {
+        // 修正：將 GetCurrentState() 改為 GetState()
+        switch (app.GetState()) {
             case App::State::START:
                 app.Start();
                 break;

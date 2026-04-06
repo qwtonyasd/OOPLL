@@ -35,6 +35,7 @@ public:
 
     void SetBlocked(bool blocked) { m_IsBlocked = blocked; }
     bool IsBlocked() const { return m_IsBlocked; }
+    bool ReachedEnd() const { return m_ReachedEnd;}
     void TakeDamage(float amount) { m_HP -= amount; }
     float GetHP() const { return m_HP; }
 

@@ -28,7 +28,7 @@ public:
         return false; // 錢不夠
     }
     void AddMoney(int amount) { m_Money += amount; }
-
+    void ReduceHealth(int amount) { m_Health -= amount; }
     // 生命邏輯
     int GetHealth() const { return m_Health; }
     void TakeDamage(int amount) {
