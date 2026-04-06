@@ -6,9 +6,9 @@
 #include "Util/GameObject.hpp"
 #include "Util/Image.hpp"
 #include "Util/Input.hpp"
-#include "Util/Transform.hpp"
 #include "Util/Keycode.hpp"
-#include "Util/TransformUtils.hpp" // 引入剛才那個檔案
+#include "Util/Transform.hpp"
+#include "Util/TransformUtils.hpp"
 #include <iostream>
 
 class WorldMap {
@@ -22,26 +22,25 @@ public:
         };
     }
 
+    // 這裡是核心邏輯：繪製並檢查點擊
     int Update(int maxUnlocked) {
         Draw(maxUnlocked);
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
 
         if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
             for (int i = 0; i < maxUnlocked; ++i) {
+                // 檢查滑鼠與旗幟座標的距離
                 if (glm::distance(mousePos, m_LevelPositions[i]) < 50.0f) {
-                    return i + 1;
+                    return i + 1; // 回傳關卡編號 (1, 2, 3...)
                 }
             }
         }
-        return 0;
+        return 0; // 沒點到則回傳 0
     }
 
-private:
     void Draw(int maxUnlocked) {
         // 1. 畫背景
         Util::Transform bgTransform;
-        // 使用新發現的函式：ConvertToUniformBufferData(transform, size, zIndex)
-        // 背景 ZIndex 設為最低 (例如 -10.0f)
         m_Background->Draw(Util::ConvertToUniformBufferData(
             bgTransform, m_Background->GetSize(), -10.0f));
 
@@ -50,12 +49,12 @@ private:
             Util::Transform t;
             t.translation = m_LevelPositions[i];
             t.scale = {0.8f, 0.8f};
-            // 旗幟 ZIndex 設高一點 (例如 0.0f)
             m_FlagImage->Draw(Util::ConvertToUniformBufferData(
                 t, m_FlagImage->GetSize(), 0.0f));
         }
     }
 
+private:
     std::shared_ptr<Util::Image> m_Background;
     std::shared_ptr<Util::Image> m_FlagImage;
     std::vector<glm::vec2> m_LevelPositions;
