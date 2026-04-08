@@ -1,37 +1,46 @@
-#ifndef TOWER_MANAGER_HPP
-#define TOWER_MANAGER_HPP
+#ifndef TOWERMANAGER_HPP
+#define TOWERMANAGER_HPP
 
-#include "Util/Logger.hpp"
+#include <vector>
+#include <memory>
 #include "Tower.hpp"
+#include "tower/Barracks.h"
 #include "tower/ArcherTower.h"
 #include "tower/MageTower.h"
 #include "tower/BombTower.h"
-#include "tower/Barracks.h"
-#include <vector>
-#include <memory>
+#include "Util/GameObject.hpp"
+#include "Util/Logger.hpp"
 
 class TowerManager {
 public:
-    // 修正：增加 route 參數
-    void AddTower(Tower::Type type, glm::vec2 pos, const std::vector<glm::vec2>& route) {
-        if (type == Tower::Type::NONE) return;
+    TowerManager(Util::GameObject& root) : m_Root(root) {}
 
+    void AddTower(Tower::Type type, glm::vec2 pos, const std::vector<glm::vec2>& route) {
         std::shared_ptr<Tower> newTower = nullptr;
 
-        if (type == Tower::Type::ARCHER) {
-            newTower = std::make_shared<ArcherTower>(pos);
-        } else if (type == Tower::Type::MAGE) {
-            newTower = std::make_shared<MageTower>(pos);
-        } else if (type == Tower::Type::BOMB) {
-            newTower = std::make_shared<BombTower>(pos);
-        } else if (type == Tower::Type::BARRACKS) {
-            // 修正：傳入 pos 與 route 到 Barracks
-            newTower = std::make_shared<Barracks>(pos, route);
+        // 嚴格對應：確保類別名稱與 Type 一致
+        switch (type) {
+            case Tower::Type::ARCHER:
+                newTower = std::make_shared<ArcherTower>(pos);
+                break;
+            case Tower::Type::BARRACKS:
+                newTower = std::make_shared<Barracks>(pos, route);
+                break;
+            case Tower::Type::MAGE:
+                newTower = std::make_shared<MageTower>(pos);
+                break;
+            case Tower::Type::BOMB:
+                newTower = std::make_shared<BombTower>(pos);
+                break;
+            default:
+                LOG_ERROR("Unknown Tower Type!");
+                return;
         }
 
         if (newTower) {
             m_Towers.push_back(newTower);
-            LOG_INFO("Tower added! Total towers: {}", m_Towers.size());
+            m_Root.AddChild(newTower); // 加入場景樹自動渲染
+            LOG_INFO("Tower Created: Type {}", static_cast<int>(type));
         }
     }
 
@@ -43,9 +52,14 @@ public:
         for (auto& tower : m_Towers) tower->Draw();
     }
 
-    void Clear() { m_Towers.clear(); }
+    void Clear() {
+        for (auto& tower : m_Towers) m_Root.RemoveChild(tower);
+        m_Towers.clear();
+    }
 
 private:
     std::vector<std::shared_ptr<Tower>> m_Towers;
+    Util::GameObject& m_Root;
 };
+
 #endif

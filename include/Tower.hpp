@@ -10,7 +10,8 @@
 
 class Tower : public Util::GameObject {
 public:
-    enum class Type { NONE, ARCHER, MAGE, BARRACKS, BOMB };
+    // 確保順序：NONE=0, ARCHER=1, BARRACKS=2, MAGE=3, BOMB=4
+    enum class Type { NONE = 0, ARCHER = 1, BARRACKS = 2, MAGE = 3, BOMB = 4 };
 
     Tower(const glm::vec2& pos, const std::string& imgPath, float range, float cooldown, float damage, int cost)
         : m_Range(range), m_Cooldown(cooldown), m_Damage(damage), m_Cost(cost) {
@@ -21,10 +22,7 @@ public:
 
     virtual ~Tower() = default;
 
-    // 必須宣告為 virtual，子類（如 Barracks）才能 override
-    virtual void Draw()  {
-        GameObject::Draw();
-    }
+    virtual void Draw() { GameObject::Draw(); }
 
     virtual void Update(std::vector<std::shared_ptr<Enemy>>& enemies) {
         float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;

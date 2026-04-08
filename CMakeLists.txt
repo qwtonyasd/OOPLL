@@ -59,6 +59,7 @@ add_executable(${PROJECT_NAME}
         src/Tower/Barracks.cpp
         include/Hud.hpp
         include/HudValue.hpp
+        src/Soldier.cpp
 )
 
 if(MSVC)

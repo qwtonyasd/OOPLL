@@ -23,13 +23,15 @@ public:
         m_Transform.scale = {1.0f, 1.0f};
     }
 
-    // 新增：回傳所有路徑清單
     const std::vector<std::vector<glm::vec2>>& GetRoutes() const {
         return m_Config.routes;
     }
 
+    // 修正：回傳靜態變數，避免引用到已銷毀的暫存物件
     const std::vector<glm::vec2>& GetRandomRoute() const {
-        if (m_Config.routes.empty()) return {}; // 安全檢查
+        static const std::vector<glm::vec2> empty_route;
+        if (m_Config.routes.empty()) return empty_route;
+
         int index = rand() % m_Config.routes.size();
         return m_Config.routes[index];
     }

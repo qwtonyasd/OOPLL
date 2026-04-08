@@ -3,17 +3,20 @@
 
 #include <memory>
 #include <vector>
+#include "Util/GameObject.hpp"
 #include "MapManager.hpp"
-#include "WorldMap.hpp"
 #include "TowerManager.hpp"
 #include "BuildMenu.hpp"
+#include "Hud.hpp"
+#include "WorldMap.hpp"
 #include "TowerSlot.hpp"
 #include "Enemy.hpp"
-#include "Hud.hpp"
 
 class App {
 public:
     enum class State { START, UPDATE, END };
+
+    App() = default;
     void Start();
     void Update();
     void End();
@@ -24,20 +27,21 @@ private:
     void HandleGamePlay();
     void ChangeLevel(int levelId);
 
-    State m_CurrentState = State::START;
-    bool m_IsInGame = false;
-
+    // 渲染與邏輯組件
+    Util::GameObject m_Root;
     std::unique_ptr<MapManager> m_MapManager;
-    std::unique_ptr<WorldMap> m_WorldMap;
     std::unique_ptr<TowerManager> m_TowerManager;
     std::unique_ptr<BuildMenu> m_BuildMenu;
     std::unique_ptr<Hud> m_Hud;
+    std::unique_ptr<WorldMap> m_WorldMap;
 
+    // 遊戲物件容器
     std::vector<std::shared_ptr<TowerSlot>> m_TowerSlots;
     std::vector<std::shared_ptr<Enemy>> m_Enemies;
+    std::shared_ptr<TowerSlot> m_SelectedSlot = nullptr;
 
-    // 儲存目前選中的塔位，用於蓋塔
-    std::shared_ptr<TowerSlot> m_SelectedSlot;
+    State m_CurrentState = State::START;
+    bool m_IsInGame = false;
 };
 
 #endif

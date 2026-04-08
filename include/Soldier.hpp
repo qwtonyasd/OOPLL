@@ -1,49 +1,46 @@
 #ifndef SOLDIER_HPP
 #define SOLDIER_HPP
 
-#include "Util/GameObject.hpp"
-#include "Util/Image.hpp"
+#include "Unit.hpp"
 #include "Enemy.hpp"
-#include <algorithm>
+#include <vector>
+#include <string>
 
-class Soldier : public Util::GameObject {
+enum class SoldierState { MOVE, SEARCH, CHASE, ATTACK, DEAD };
+
+class Soldier : public Unit {
 public:
-    Soldier(glm::vec2 pos) : m_HomePos(pos), m_HP(50.0f) {
-        SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/BarracksTower/Soldier/1.png"));
-        m_Transform.translation = pos;
-        m_ZIndex = 11.0f;
-    }
+    // 統一建構子參數 (4個)
+    Soldier(glm::vec2 spawnPos, glm::vec2 targetPos, float speed, float hp);
 
-    // 範圍定義：數值越大，攔截怪物的能力越強
-    float GetBlockRange() const { return 45.0f; }   // 必須在此距離內才能「擋住」怪
-    float GetSupportRange() const { return 80.0f; } // 只要在此距離內，就算怪被隊友擋住也能幫打
+    // 必須覆寫父類別的純虛擬函式，不能加參數
+    void Update() override;
 
-    void Update(float dt, std::shared_ptr<Enemy> target) {
-        if (IsDead()) {
-            SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/BarracksTower/Soldier/24.png"));
-            return;
-        }
+    // 這是你真正用來處理戰鬥的邏輯
+    void UpdateLogic(std::vector<std::shared_ptr<Enemy>>& enemies);
 
-        if (target) {
-            // 戰鬥中：每秒對怪造成傷害
-            target->TakeDamage(15.0f * dt);
-        } else {
-            // 非戰鬥：緩慢回血
-            if (m_HP < 50.0f) m_HP = std::min(50.0f, m_HP + 5.0f * dt);
-            SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/BarracksTower/Soldier/1.png"));
-        }
-    }
+    // 如果父類別 Unit 沒有 Draw()，請移除 override
+    // 如果父類別有，就保留。這裡假設父類別是 GameObject 有 Draw()
+    void Draw();
 
-    void TakeDamage(float amount) { m_HP -= amount; }
-    bool IsDead() const { return m_HP <= 0; }
-    void Respawn() {
-        m_HP = 50.0f;
-        SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/BarracksTower/Soldier/1.png"));
-    }
+    float GetHP() const { return m_HP; }
+    bool IsDeadAnimationFinished() const { return m_IsDeadAnimDone; }
 
 private:
-    glm::vec2 m_HomePos;
-    float m_HP;
+    void UpdateAnimation(float dt);
+    void MoveTo(glm::vec2 target);
+
+    glm::vec2 m_RallyPoint;
+    std::shared_ptr<Enemy> m_TargetEnemy = nullptr;
+    SoldierState m_CurrentState = SoldierState::MOVE;
+
+    float m_AnimTimer = 0.0f;
+    int m_AnimIndex = 0;
+    bool m_IsDeadAnimDone = false;
+
+    std::vector<std::string> m_WalkPaths;
+    std::vector<std::string> m_AttackPaths;
+    std::vector<std::string> m_DeadPaths;
 };
 
 #endif
