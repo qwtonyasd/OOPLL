@@ -2,95 +2,100 @@
 #include "Util/Time.hpp"
 #include "Util/Image.hpp"
 
-// 修正建構子：只拿 4 個參數
-Soldier::Soldier(glm::vec2 spawnPos, glm::vec2 targetPos, float speed, float hp)
-    : Unit({spawnPos}, speed, hp), m_RallyPoint(targetPos) {
+const int WALK_START = 1, WALK_END = 6;
+const int ATK_START = 7,  ATK_END = 17;
+const int DEAD_START = 18, DEAD_END = 24;
 
+Soldier::Soldier(glm::vec2 spawnPos, glm::vec2 rallyPoint, float speed, float hp)
+    : Unit({spawnPos}, speed, hp), m_RallyPoint(rallyPoint) {
     m_Transform.translation = spawnPos;
     m_ZIndex = 15.0f;
-    m_HP = hp;
-
-    // 路徑初始化
-    std::string base = "../PTSD/assets/sprites/images/BarracksTower/Soldier/";
-    for(int i=1; i<=6; i++) m_WalkPaths.push_back(base + std::to_string(i) + ".png");
-    for(int i=7; i<=17; i++) m_AttackPaths.push_back(base + std::to_string(i) + ".png");
-    for(int i=18; i<=24; i++) m_DeadPaths.push_back(base + std::to_string(i) + ".png");
-
-    SetDrawable(std::make_shared<Util::Image>(m_WalkPaths[0]));
+    m_CurrentState = Soldier::State::MOVE_TO_RALLY;
 }
 
-// 實作父類別要求的 Update
-void Soldier::Update() {
-    // 留空或放簡單邏輯，因為主要邏輯在 UpdateLogic
-}
-
-void Soldier::UpdateLogic(std::vector<std::shared_ptr<Enemy>>& enemies) {
+void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies) {
     float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
-
     if (m_HP <= 0) {
-        m_CurrentState = SoldierState::DEAD;
+        if (m_CurrentState != Soldier::State::DEATH) SetState(Soldier::State::DEATH);
         UpdateAnimation(dt);
         return;
     }
 
-    // 這裡放你之前的 switch (m_CurrentState) 邏輯 ...
-    // 注意：要把 SoldierState::MOVE_TO_RALLY 改回 SoldierState::MOVE (依據你的 enum)
     switch (m_CurrentState) {
-        case SoldierState::MOVE:
-            MoveTo(m_RallyPoint);
-            if (glm::distance(m_Transform.translation, m_RallyPoint) < 5.0f) m_CurrentState = SoldierState::SEARCH;
-            break;
-        case SoldierState::SEARCH:
-            for (auto& enemy : enemies) {
-                if (!enemy->IsBlocked() && glm::distance(m_Transform.translation, enemy->GetPosition()) < 100.0f) {
-                    m_TargetEnemy = enemy;
-                    m_CurrentState = SoldierState::CHASE;
-                    break;
-                }
-            }
-            break;
-        case SoldierState::CHASE:
-            if (!m_TargetEnemy || m_TargetEnemy->GetHP() <= 0) {
-                m_CurrentState = SoldierState::MOVE;
-                break;
-            }
-            MoveTo(m_TargetEnemy->GetPosition());
-            if (glm::distance(m_Transform.translation, m_TargetEnemy->GetPosition()) < 25.0f) {
-                m_TargetEnemy->SetBlocked(true);
-                m_CurrentState = SoldierState::ATTACK;
-            }
-            break;
-        case SoldierState::ATTACK:
-            if (!m_TargetEnemy || m_TargetEnemy->GetHP() <= 0) {
-                m_CurrentState = SoldierState::SEARCH;
-                break;
-            }
-            m_HP -= 5.0f * dt; // 敵人打我
-            if (m_AnimIndex == 5) m_TargetEnemy->TakeDamage(10.0f * dt); // 我打敵人
-            break;
-        default: break;
+        case Soldier::State::MOVE_TO_RALLY: MoveTowardsRallyPoint(); break;
+        case Soldier::State::IDLE:          SearchForEnemy(enemies); break;
+        case Soldier::State::BLOCKING:      PerformAttack(); break;
+        case Soldier::State::DEATH:         break;
     }
     UpdateAnimation(dt);
 }
 
-void Soldier::MoveTo(glm::vec2 target) {
-    glm::vec2 dir = target - m_Transform.translation;
-    if (glm::length(dir) > 0.1f) {
-        glm::vec2 normDir = glm::normalize(dir);
-        m_Transform.translation += normDir * m_Speed;
-        m_Transform.scale.x = (normDir.x > 0) ? 1.0f : -1.0f;
+void Soldier::MoveTowardsRallyPoint() {
+    float dist = glm::distance(m_Transform.translation, m_RallyPoint);
+    if (dist > 2.0f) {
+        glm::vec2 dir = glm::normalize(m_RallyPoint - m_Transform.translation);
+        m_Transform.translation += dir * m_Speed;
+        m_Transform.scale.x = (dir.x > 0) ? 1.0f : -1.0f;
+    } else {
+        SetState(Soldier::State::IDLE);
+    }
+}
+
+void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
+    for (auto& enemy : enemies) {
+        if (enemy->GetHP() > 0 && !enemy->IsBlocked()) {
+            if (glm::distance(m_Transform.translation, enemy->GetPosition()) < 40.0f) {
+                m_TargetEnemy = enemy;
+                SetState(Soldier::State::BLOCKING);
+                return;
+            }
+        }
+    }
+}
+
+void Soldier::PerformAttack() {
+    if (!m_TargetEnemy || m_TargetEnemy->GetHP() <= 0) {
+        ReleaseEnemy();
+        SetState(Soldier::State::MOVE_TO_RALLY);
+        return;
+    }
+    m_TargetEnemy->SetBlocked(true);
+    m_Transform.scale.x = (m_TargetEnemy->GetPosition().x > m_Transform.translation.x) ? 1.0f : -1.0f;
+
+    float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
+    m_TargetEnemy->TakeDamage(m_AttackDamage * dt);
+}
+
+void Soldier::SetState(Soldier::State newState) {
+    m_CurrentState = newState;
+    switch (newState) {
+        case Soldier::State::MOVE_TO_RALLY: m_FrameIndex = WALK_START; break;
+        case Soldier::State::IDLE:          m_FrameIndex = WALK_START; break;
+        case Soldier::State::BLOCKING:      m_FrameIndex = ATK_START;  break;
+        case Soldier::State::DEATH:         m_FrameIndex = DEAD_START; break;
     }
 }
 
 void Soldier::UpdateAnimation(float dt) {
     m_AnimTimer += dt;
-    if (m_AnimTimer > 0.1f) {
+    if (m_AnimTimer > 0.08f) {
         m_AnimTimer = 0;
-        m_AnimIndex++;
-        // 動畫切換邏輯 ... (同前一個回答)
+        m_FrameIndex++;
+        int start, end;
+        bool loop = true;
+        if (m_CurrentState == Soldier::State::BLOCKING) { start = ATK_START; end = ATK_END; }
+        else if (m_CurrentState == Soldier::State::DEATH) { start = DEAD_START; end = DEAD_END; loop = false; }
+        else { start = WALK_START; end = WALK_END; }
+
+        if (m_FrameIndex > end) {
+            if (loop) m_FrameIndex = start;
+            else { m_FrameIndex = end; m_IsDeadAnimDone = true; }
+        }
+        SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/BarracksTower/Soldier/" + std::to_string(m_FrameIndex) + ".png"));
     }
 }
 
-void Soldier::Draw() {
-    GameObject::Draw(); // 呼叫 PTSD 的繪製
+void Soldier::ReleaseEnemy() {
+    if (m_TargetEnemy) m_TargetEnemy->SetBlocked(false);
+    m_TargetEnemy = nullptr;
 }

@@ -5,6 +5,7 @@
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
 #include "GameManager.hpp"
+#include <algorithm>
 
 void App::Start() {
     LOG_TRACE("App Started");
@@ -13,7 +14,7 @@ void App::Start() {
     m_MapManager = std::make_unique<MapManager>();
     m_WorldMap = std::make_unique<WorldMap>();
 
-    // 將 m_Root 傳入 TowerManager，使其產生的塔能自動加入渲染樹
+    // 將渲染樹根節點傳入 TowerManager
     m_TowerManager = std::make_unique<TowerManager>(m_Root);
 
     m_BuildMenu = std::make_unique<BuildMenu>();
@@ -30,7 +31,7 @@ void App::Update() {
         HandleSelectLevel();
     }
 
-    // 全局退出偵測
+    // 全局退出
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) || Util::Input::IfExit()) {
         m_CurrentState = State::END;
     }
@@ -47,46 +48,38 @@ void App::HandleSelectLevel() {
 }
 
 void App::HandleGamePlay() {
-    // 1. 底層繪製：地圖
+    // 1. 繪製地圖底層
     m_MapManager->Draw();
 
     glm::vec2 mousePos = Util::Input::GetCursorPosition();
     auto currentMap = m_MapManager->GetCurrentMap();
 
     // ---------------------------------------------------------
-    // 新增：偵測 E 和 R 鍵手動生成怪物 (Debug 功能)
+    // Debug 生成怪物 (E: Goblin, R: Orc)
     // ---------------------------------------------------------
     if (currentMap && !currentMap->GetRoutes().empty()) {
         const auto& mainRoute = currentMap->GetRoutes()[0];
 
         if (Util::Input::IsKeyDown(Util::Keycode::E)) {
-            auto goblin = EnemyFactory::Create(Enemy::Type::GOBLIN, mainRoute);
-            if (goblin) {
-                m_Enemies.push_back(goblin);
-                LOG_INFO("Spawned Goblin via E key");
-            }
+            m_Enemies.push_back(EnemyFactory::Create(Enemy::Type::GOBLIN, mainRoute));
+            LOG_INFO("Spawned Goblin via E key");
         }
 
         if (Util::Input::IsKeyDown(Util::Keycode::R)) {
-            auto orc = EnemyFactory::Create(Enemy::Type::ORC, mainRoute);
-            if (orc) {
-                m_Enemies.push_back(orc);
-                LOG_INFO("Spawned Orc via R key");
-            }
+            m_Enemies.push_back(EnemyFactory::Create(Enemy::Type::ORC, mainRoute));
+            LOG_INFO("Spawned Orc via R key");
         }
     }
 
     // 2. 處理蓋塔選單
     if (m_BuildMenu->IsVisible()) {
         m_BuildMenu->Draw();
-
         Tower::Type selectedType = m_BuildMenu->Update();
 
         if (selectedType != Tower::Type::NONE) {
             if (m_SelectedSlot) {
                 int cost = Tower::GetBaseCost(selectedType);
                 if (GameManager::GetInstance().SpendMoney(cost)) {
-                    // 取得地圖路徑供兵營使用
                     std::vector<glm::vec2> route = (currentMap && !currentMap->GetRoutes().empty())
                                                    ? currentMap->GetRoutes()[0] : std::vector<glm::vec2>{};
 
@@ -98,20 +91,19 @@ void App::HandleGamePlay() {
             }
             m_BuildMenu->SetVisible(false);
             m_SelectedSlot = nullptr;
-            return; // 結束本影格防止滑鼠事件向下傳遞
+            return;
         }
 
-        // 點擊選單外部關閉選單
         if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
             float distToMenu = glm::distance(mousePos, m_BuildMenu->GetTransform().translation);
-            if (distToMenu > 100.0f) {
+            if (distToMenu > 120.0f) {
                 m_BuildMenu->SetVisible(false);
                 m_SelectedSlot = nullptr;
                 return;
             }
         }
     }
-    // 3. 偵測塔位點擊 (僅在選單關閉時執行)
+    // 3. 偵測塔位點擊
     else {
         if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
             for (auto& slot : m_TowerSlots) {
@@ -119,32 +111,51 @@ void App::HandleGamePlay() {
                     m_SelectedSlot = slot;
                     m_BuildMenu->SetPosition(slot->GetPosition());
                     m_BuildMenu->SetVisible(true);
-                    return; // 重要：開啟選單後立刻結束本影格，防止秒蓋塔
+                    return;
                 }
             }
         }
     }
 
-    // 4. 渲染旗幟
+    // 4. 繪製塔位旗幟
     for (auto& slot : m_TowerSlots) {
         slot->Draw();
     }
 
-    // 5. 更新與渲染塔
-    for (auto& enemy : m_Enemies) enemy->SetBlocked(false);
+    // ---------------------------------------------------------
+    // 5. 核心邏輯：士兵攔截判定與塔更新
+    // ---------------------------------------------------------
+
+    // 每一幀先清除敵人的攔截狀態，讓士兵重新決定攔截誰
+    for (auto& enemy : m_Enemies) {
+        enemy->SetBlocked(false);
+    }
+
+    // 更新塔 (會驅動兵營的小兵去尋找並截停敵人)
     m_TowerManager->UpdateAll(m_Enemies);
     m_TowerManager->DrawAll();
 
-    // 6. 更新與渲染敵人
+    // 6. 更新、渲染與清理敵人
     for (auto it = m_Enemies.begin(); it != m_Enemies.end(); ) {
-        (*it)->Update();
-        (*it)->Draw();
+        auto& enemy = *it;
+
+        enemy->Update();
+        enemy->Draw();
 
         bool shouldRemove = false;
-        if ((*it)->ReachedEnd()) {
+
+        // 漏怪處理
+        if (enemy->ReachedEnd()) {
             GameManager::GetInstance().TakeDamage(1);
             shouldRemove = true;
-        } else if ((*it)->GetHP() <= 0 && (*it)->IsDeadAnimationFinished()) {
+        }
+        // 擊殺處理
+        else if (enemy->GetHP() <= 0 && enemy->IsDeadAnimationFinished()) {
+            // 根據類型給予金錢：哥布林 3 元，獸人 9 元
+            int reward = (enemy->GetType() == Enemy::Type::GOBLIN) ? 3 : 9;
+            GameManager::GetInstance().AddMoney(reward);
+            LOG_INFO("Enemy Killed! Reward: {} Gold", reward);
+
             shouldRemove = true;
         }
 
@@ -158,7 +169,7 @@ void App::HandleGamePlay() {
     // 7. 繪製 HUD
     if (m_Hud) m_Hud->Draw();
 
-    // 回地圖
+    // 返回選關介面
     if (Util::Input::IsKeyDown(Util::Keycode::BACKSPACE)) {
         m_IsInGame = false;
     }
@@ -169,12 +180,15 @@ void App::ChangeLevel(int levelId) {
     m_MapManager->AddLevel(levelId, newMap);
     m_MapManager->SwitchLevel(levelId);
 
-    GameManager::GetInstance().InitLevel(500, 20);
+    // 重點：初始金額設定為 265
+    GameManager::GetInstance().InitLevel(265, 20);
 
+    // 清理舊有關卡物件
     m_TowerManager->Clear();
     m_TowerSlots.clear();
     m_Enemies.clear();
 
+    // 生成塔位
     auto currentMap = m_MapManager->GetCurrentMap();
     if (currentMap) {
         for (const auto& pos : currentMap->GetTowerSlots()) {
@@ -183,6 +197,7 @@ void App::ChangeLevel(int levelId) {
     }
 
     m_BuildMenu->SetVisible(false);
+    LOG_INFO("Level {} Loaded. Start Gold: 265", levelId);
 }
 
 void App::End() {

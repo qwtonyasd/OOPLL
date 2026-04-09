@@ -4,43 +4,36 @@
 #include "Unit.hpp"
 #include "Enemy.hpp"
 #include <vector>
-#include <string>
-
-enum class SoldierState { MOVE, SEARCH, CHASE, ATTACK, DEAD };
+#include <memory>
 
 class Soldier : public Unit {
 public:
-    // 統一建構子參數 (4個)
-    Soldier(glm::vec2 spawnPos, glm::vec2 targetPos, float speed, float hp);
+    enum class State { MOVE_TO_RALLY, IDLE, BLOCKING, DEATH };
 
-    // 必須覆寫父類別的純虛擬函式，不能加參數
-    void Update() override;
+    Soldier(glm::vec2 spawnPos, glm::vec2 rallyPoint, float speed, float hp);
 
-    // 這是你真正用來處理戰鬥的邏輯
-    void UpdateLogic(std::vector<std::shared_ptr<Enemy>>& enemies);
-
-    // 如果父類別 Unit 沒有 Draw()，請移除 override
-    // 如果父類別有，就保留。這裡假設父類別是 GameObject 有 Draw()
-    void Draw();
+    void Update() override {}
+    void Update(std::vector<std::shared_ptr<Enemy>>& enemies);
 
     float GetHP() const { return m_HP; }
     bool IsDeadAnimationFinished() const { return m_IsDeadAnimDone; }
+    void ReleaseEnemy();
+    void SetState(State newState);
 
 private:
     void UpdateAnimation(float dt);
-    void MoveTo(glm::vec2 target);
+    void MoveTowardsRallyPoint();
+    void SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies);
+    void PerformAttack();
 
+    State m_CurrentState = State::MOVE_TO_RALLY;
     glm::vec2 m_RallyPoint;
     std::shared_ptr<Enemy> m_TargetEnemy = nullptr;
-    SoldierState m_CurrentState = SoldierState::MOVE;
 
     float m_AnimTimer = 0.0f;
-    int m_AnimIndex = 0;
+    int m_FrameIndex = 1;
     bool m_IsDeadAnimDone = false;
-
-    std::vector<std::string> m_WalkPaths;
-    std::vector<std::string> m_AttackPaths;
-    std::vector<std::string> m_DeadPaths;
+    float m_AttackDamage = 20.0f; // 每秒造成的傷害
 };
 
 #endif
