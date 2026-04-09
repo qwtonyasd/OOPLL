@@ -5,6 +5,7 @@
 #include "Util/Time.hpp"
 #include "Enemy.hpp"
 #include <memory>
+#include <glm/glm.hpp>
 
 class Projectile : public Util::GameObject {
 public:
@@ -15,22 +16,26 @@ public:
 
     virtual ~Projectile() = default;
 
-    // 純虛擬函式：強迫子類別實作自己的飛行與命中邏輯
-    virtual void Update() = 0;
-    virtual void OnHit() = 0;
+    virtual void Update() = 0; // 每個子彈移動方式不同
 
     bool IsActive() const { return m_IsActive; }
 
+    virtual void Draw() {
+        if (m_IsActive) {
+            // LOG_DEBUG("Drawing Projectile at {}, {}", m_Transform.translation.x, m_Transform.translation.y);
+            GameObject::Draw();
+        }
+    }
 protected:
     std::shared_ptr<Enemy> m_Target;
     float m_Damage;
-    float m_Speed = 600.0f; // 預設速度
+    float m_Speed = 600.0f;
     bool m_IsActive = true;
 
-    // 輔助函式：取得 DeltaTime (秒)
     float DeltaTime() const {
         return static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
     }
 };
+
 
 #endif

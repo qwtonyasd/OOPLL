@@ -11,7 +11,7 @@
 #include "WorldMap.hpp"
 #include "TowerSlot.hpp"
 #include "Enemy.hpp"
-
+#include "Projectile.hpp"
 class App {
 public:
     enum class State { START, UPDATE, END };
@@ -26,7 +26,7 @@ private:
     void HandleSelectLevel();
     void HandleGamePlay();
     void ChangeLevel(int levelId);
-
+    std::vector<std::shared_ptr<Projectile>> m_Projectiles;
     // 渲染與邏輯組件
     Util::GameObject m_Root;
     std::unique_ptr<MapManager> m_MapManager;

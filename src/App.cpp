@@ -14,7 +14,7 @@ void App::Start() {
     m_MapManager = std::make_unique<MapManager>();
     m_WorldMap = std::make_unique<WorldMap>();
 
-    // 將渲染樹根節點傳入 TowerManager
+    // 將渲染樹根節點傳入 TowerManager，讓塔能被正確加入 m_Root
     m_TowerManager = std::make_unique<TowerManager>(m_Root);
 
     m_BuildMenu = std::make_unique<BuildMenu>();
@@ -48,7 +48,7 @@ void App::HandleSelectLevel() {
 }
 
 void App::HandleGamePlay() {
-    // 1. 繪製地圖底層
+    // 1. 繪製地圖底層 (最先畫，才不會遮到別人)
     m_MapManager->Draw();
 
     glm::vec2 mousePos = Util::Input::GetCursorPosition();
@@ -123,17 +123,42 @@ void App::HandleGamePlay() {
     }
 
     // ---------------------------------------------------------
-    // 5. 核心邏輯：士兵攔截判定與塔更新
+    // 5. 核心邏輯：塔與子彈更新
     // ---------------------------------------------------------
 
-    // 每一幀先清除敵人的攔截狀態，讓士兵重新決定攔截誰
+    // 清除敵人攔截狀態
     for (auto& enemy : m_Enemies) {
         enemy->SetBlocked(false);
     }
 
-    // 更新塔 (會驅動兵營的小兵去尋找並截停敵人)
-    m_TowerManager->UpdateAll(m_Enemies);
+    // 更新塔 (並產生新的子彈放入 m_Projectiles)
+    m_TowerManager->UpdateAll(m_Enemies, m_Projectiles);
     m_TowerManager->DrawAll();
+
+    // ---------------------------------------------------------
+    // 5.5 重要：子彈的渲染樹管理與座標對齊
+    // ---------------------------------------------------------
+    for (auto it = m_Projectiles.begin(); it != m_Projectiles.end(); ) {
+        auto& p = *it;
+
+        // 【關鍵】如果子彈還沒加入 m_Root，手動加入一次
+        // 這樣它的座標才能對齊塔與地圖
+        m_Root.AddChild(p);
+
+        p->Update();
+
+        // 注意：加進 m_Root 後，框架會自動在 m_Root.Draw() 時畫出子彈
+        // 如果你的 Projectile 有 override Draw，這裡呼叫 p->Draw() 沒問題
+        p->Draw();
+
+        if (!p->IsActive()) {
+            // 【重要】子彈失效(爆炸)後，必須從渲染樹拔除
+            m_Root.RemoveChild(p);
+            it = m_Projectiles.erase(it);
+        } else {
+            ++it;
+        }
+    }
 
     // 6. 更新、渲染與清理敵人
     for (auto it = m_Enemies.begin(); it != m_Enemies.end(); ) {
@@ -144,18 +169,14 @@ void App::HandleGamePlay() {
 
         bool shouldRemove = false;
 
-        // 漏怪處理
         if (enemy->ReachedEnd()) {
             GameManager::GetInstance().TakeDamage(1);
             shouldRemove = true;
         }
-        // 擊殺處理
         else if (enemy->GetHP() <= 0 && enemy->IsDeadAnimationFinished()) {
-            // 根據類型給予金錢：哥布林 3 元，獸人 9 元
             int reward = (enemy->GetType() == Enemy::Type::GOBLIN) ? 3 : 9;
             GameManager::GetInstance().AddMoney(reward);
             LOG_INFO("Enemy Killed! Reward: {} Gold", reward);
-
             shouldRemove = true;
         }
 
@@ -180,11 +201,17 @@ void App::ChangeLevel(int levelId) {
     m_MapManager->AddLevel(levelId, newMap);
     m_MapManager->SwitchLevel(levelId);
 
-    // 重點：初始金額設定為 265
     GameManager::GetInstance().InitLevel(265, 20);
 
-    // 清理舊有關卡物件
+    // 清理舊有關卡物件，包含從渲染樹移除
     m_TowerManager->Clear();
+
+    // 清理子彈
+    for (auto& p : m_Projectiles) {
+        m_Root.RemoveChild(p);
+    }
+    m_Projectiles.clear();
+
     m_TowerSlots.clear();
     m_Enemies.clear();
 

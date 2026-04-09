@@ -60,6 +60,7 @@ add_executable(${PROJECT_NAME}
         include/Hud.hpp
         include/HudValue.hpp
         src/Soldier.cpp
+        include/Bomb.hpp
 )
 
 if(MSVC)
