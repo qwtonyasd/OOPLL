@@ -6,15 +6,18 @@
 #include "Util/Logger.hpp"
 #include "GameManager.hpp"
 #include <algorithm>
+#include <set>
+
+// 建立一個全域或成員變數，用來追蹤哪些子彈已經被加入過 m_Root
+// 這樣可以避免每一幀重複 AddChild 導致的效能與渲染問題
+static std::set<std::shared_ptr<Projectile>> g_ManagedProjectiles;
 
 void App::Start() {
     LOG_TRACE("App Started");
-
-    // 初始化核心系統
     m_MapManager = std::make_unique<MapManager>();
     m_WorldMap = std::make_unique<WorldMap>();
 
-    // 將渲染樹根節點傳入 TowerManager，讓塔能被正確加入 m_Root
+    // 將 m_Root 傳入，讓塔能被正確管理
     m_TowerManager = std::make_unique<TowerManager>(m_Root);
 
     m_BuildMenu = std::make_unique<BuildMenu>();
@@ -31,7 +34,6 @@ void App::Update() {
         HandleSelectLevel();
     }
 
-    // 全局退出
     if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) || Util::Input::IfExit()) {
         m_CurrentState = State::END;
     }
@@ -48,30 +50,28 @@ void App::HandleSelectLevel() {
 }
 
 void App::HandleGamePlay() {
-    // 1. 繪製地圖底層 (最先畫，才不會遮到別人)
+    // 1. 繪製地圖底層
     m_MapManager->Draw();
 
     glm::vec2 mousePos = Util::Input::GetCursorPosition();
     auto currentMap = m_MapManager->GetCurrentMap();
 
     // ---------------------------------------------------------
-    // Debug 生成怪物 (E: Goblin, R: Orc)
+    // 2. 生成怪物 Debug
     // ---------------------------------------------------------
     if (currentMap && !currentMap->GetRoutes().empty()) {
         const auto& mainRoute = currentMap->GetRoutes()[0];
-
         if (Util::Input::IsKeyDown(Util::Keycode::E)) {
             m_Enemies.push_back(EnemyFactory::Create(Enemy::Type::GOBLIN, mainRoute));
-            LOG_INFO("Spawned Goblin via E key");
         }
-
         if (Util::Input::IsKeyDown(Util::Keycode::R)) {
             m_Enemies.push_back(EnemyFactory::Create(Enemy::Type::ORC, mainRoute));
-            LOG_INFO("Spawned Orc via R key");
         }
     }
 
-    // 2. 處理蓋塔選單
+    // ---------------------------------------------------------
+    // 3. 蓋塔邏輯
+    // ---------------------------------------------------------
     if (m_BuildMenu->IsVisible()) {
         m_BuildMenu->Draw();
         Tower::Type selectedType = m_BuildMenu->Update();
@@ -82,11 +82,8 @@ void App::HandleGamePlay() {
                 if (GameManager::GetInstance().SpendMoney(cost)) {
                     std::vector<glm::vec2> route = (currentMap && !currentMap->GetRoutes().empty())
                                                    ? currentMap->GetRoutes()[0] : std::vector<glm::vec2>{};
-
                     m_TowerManager->AddTower(selectedType, m_SelectedSlot->GetPosition(), route);
                     m_SelectedSlot->SetOccupied(true);
-                } else {
-                    LOG_DEBUG("Money not enough!");
                 }
             }
             m_BuildMenu->SetVisible(false);
@@ -99,84 +96,65 @@ void App::HandleGamePlay() {
             if (distToMenu > 120.0f) {
                 m_BuildMenu->SetVisible(false);
                 m_SelectedSlot = nullptr;
-                return;
             }
         }
-    }
-    // 3. 偵測塔位點擊
-    else {
+    } else {
         if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
             for (auto& slot : m_TowerSlots) {
                 if (glm::distance(mousePos, slot->GetPosition()) < 40.0f && !slot->IsOccupied()) {
                     m_SelectedSlot = slot;
                     m_BuildMenu->SetPosition(slot->GetPosition());
                     m_BuildMenu->SetVisible(true);
-                    return;
+                    break;
                 }
             }
         }
     }
 
-    // 4. 繪製塔位旗幟
-    for (auto& slot : m_TowerSlots) {
-        slot->Draw();
-    }
+    for (auto& slot : m_TowerSlots) slot->Draw();
 
     // ---------------------------------------------------------
-    // 5. 核心邏輯：塔與子彈更新
+    // 4. 核心：塔與子彈更新 (渲染樹修正)
     // ---------------------------------------------------------
 
-    // 清除敵人攔截狀態
-    for (auto& enemy : m_Enemies) {
-        enemy->SetBlocked(false);
-    }
-
-    // 更新塔 (並產生新的子彈放入 m_Projectiles)
+    // 更新塔 (會呼叫 Attack 並產生子彈放入 m_Projectiles)
     m_TowerManager->UpdateAll(m_Enemies, m_Projectiles);
     m_TowerManager->DrawAll();
 
-    // ---------------------------------------------------------
-    // 5.5 重要：子彈的渲染樹管理與座標對齊
-    // ---------------------------------------------------------
+    // 更新與管理子彈
     for (auto it = m_Projectiles.begin(); it != m_Projectiles.end(); ) {
         auto& p = *it;
 
-        // 【關鍵】如果子彈還沒加入 m_Root，手動加入一次
-        // 這樣它的座標才能對齊塔與地圖
-        m_Root.AddChild(p);
+        // --- 修正：不將子彈加入 m_Root，直接手動管理生命週期與繪製 ---
+        // 這樣可以避免 p->Draw() 與 m_Root 自動繪製衝突，也能保證使用絕對座標
 
         p->Update();
-
-        // 注意：加進 m_Root 後，框架會自動在 m_Root.Draw() 時畫出子彈
-        // 如果你的 Projectile 有 override Draw，這裡呼叫 p->Draw() 沒問題
-        p->Draw();
+        p->Draw(); // 這裡執行 Projectile::Draw()
 
         if (!p->IsActive()) {
-            // 【重要】子彈失效(爆炸)後，必須從渲染樹拔除
-            m_Root.RemoveChild(p);
+            // 如果你之前有 AddChild，這裡才需要 RemoveChild
+            // m_Root.RemoveChild(p);
             it = m_Projectiles.erase(it);
         } else {
             ++it;
         }
     }
 
-    // 6. 更新、渲染與清理敵人
+    // ---------------------------------------------------------
+    // 5. 敵人更新
+    // ---------------------------------------------------------
     for (auto it = m_Enemies.begin(); it != m_Enemies.end(); ) {
         auto& enemy = *it;
-
         enemy->Update();
         enemy->Draw();
 
         bool shouldRemove = false;
-
         if (enemy->ReachedEnd()) {
             GameManager::GetInstance().TakeDamage(1);
             shouldRemove = true;
-        }
-        else if (enemy->GetHP() <= 0 && enemy->IsDeadAnimationFinished()) {
+        } else if (enemy->GetHP() <= 0 && enemy->IsDeadAnimationFinished()) {
             int reward = (enemy->GetType() == Enemy::Type::GOBLIN) ? 3 : 9;
             GameManager::GetInstance().AddMoney(reward);
-            LOG_INFO("Enemy Killed! Reward: {} Gold", reward);
             shouldRemove = true;
         }
 
@@ -187,10 +165,8 @@ void App::HandleGamePlay() {
         }
     }
 
-    // 7. 繪製 HUD
     if (m_Hud) m_Hud->Draw();
 
-    // 返回選關介面
     if (Util::Input::IsKeyDown(Util::Keycode::BACKSPACE)) {
         m_IsInGame = false;
     }
@@ -203,19 +179,18 @@ void App::ChangeLevel(int levelId) {
 
     GameManager::GetInstance().InitLevel(265, 20);
 
-    // 清理舊有關卡物件，包含從渲染樹移除
     m_TowerManager->Clear();
 
-    // 清理子彈
+    // 清理子彈與渲染樹管理容器
     for (auto& p : m_Projectiles) {
         m_Root.RemoveChild(p);
     }
     m_Projectiles.clear();
+    g_ManagedProjectiles.clear(); // 換關必清
 
     m_TowerSlots.clear();
     m_Enemies.clear();
 
-    // 生成塔位
     auto currentMap = m_MapManager->GetCurrentMap();
     if (currentMap) {
         for (const auto& pos : currentMap->GetTowerSlots()) {
@@ -224,7 +199,6 @@ void App::ChangeLevel(int levelId) {
     }
 
     m_BuildMenu->SetVisible(false);
-    LOG_INFO("Level {} Loaded. Start Gold: 265", levelId);
 }
 
 void App::End() {
