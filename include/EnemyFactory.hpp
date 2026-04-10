@@ -34,7 +34,7 @@ public:
             return std::make_shared<Enemy>(
                 type,
                 path,
-                75.0f,
+                45.0f,
                 60.0f,
                 moveAnis,
                 generatePaths("Goblin", 15814, 15828), // 攻擊

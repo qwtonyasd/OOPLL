@@ -28,7 +28,7 @@ public:
         m_ZIndex = 50.0f;               // 調整為合理的層級，通常 50 就足以蓋過地圖
 
         // 飛行參數
-        m_FlightDuration = 1.2f;
+        m_FlightDuration = 1.0f;
         m_MaxArcHeight = 100.0f;
         m_ElapsedTime = 0.0f;
     }

@@ -7,7 +7,7 @@
 class BombTower : public Tower {
 public:
     BombTower(glm::vec2 pos)
-        : Tower(pos, "../PTSD/assets/sprites/images/BombTower/TowerLevel1/1.png", 300.0f, 2.5f, 40.0f, 125) {}
+        : Tower(pos, "../PTSD/assets/sprites/images/BombTower/TowerLevel1/1.png", 150.0f, 2.5f, 40.0f, 125) {}
 
     void Attack(std::shared_ptr<Enemy> target,
                 std::vector<std::shared_ptr<Enemy>>& allEnemies,
