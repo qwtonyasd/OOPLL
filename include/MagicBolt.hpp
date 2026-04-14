@@ -9,71 +9,60 @@
 
 class MagicBolt : public Projectile {
 public:
-    MagicBolt(glm::vec2 startPos, std::shared_ptr<Enemy> target, float damage)
-    : Projectile(startPos, target, damage), m_StartPos(startPos) {
+    MagicBolt(glm::vec2 startPos, std::shared_ptr<Enemy> target, float damage, Enemy::DamageType damageType)
+    : Projectile(startPos, target, damage, damageType), m_StartPos(startPos) {
 
-        // 1. 路徑：請確保這裡的路徑與 ArcherTower 一模一樣來測試
+        // 檢查 1：確保圖片路徑正確（請確認資料夾名稱是 MageTower 還是 Mage）
         SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/MageTower/Mage/1.png"));
 
         this->m_IsActive = true;
-        this->m_Transform.scale = {1.0f, 1.0f}; // 強制放 5 倍大，大到無法無視
+        this->m_Transform.scale = {1.0f, 1.0f};
         this->m_Transform.translation = startPos;
-        this->m_ZIndex = 1000.0f; // 最高層級
+        this->m_ZIndex = 100.0f; // 確保 ZIndex 不要大到被背景遮住或小到看不見
 
-        m_FlightDuration = 0.8f; // 飛慢一點 (1.5秒)，讓你肉眼能捕捉到
-        m_MaxArcHeight = 0.0f;   // 關閉拋物線，先走直線排除座標偏移
+        m_FlightDuration = 0.5f; // 縮短飛行時間，讓手感更好
+        m_MaxArcHeight = 0.0f;
         m_ElapsedTime = 0.0f;
 
         m_FinalLandPos = (target) ? target->GetPosition() : startPos;
     }
 
-    // 複寫 Draw 確保它被執行
+    // 檢查 2：不要在子類別複寫 Draw，除非你有特殊繪圖需求
+    // 如果一定要複寫，請確保有呼叫 GameObject::Draw()
+    /*
     void Draw() override {
         if (m_IsActive) {
             GameObject::Draw();
         }
     }
+    */
 
     void Update() override {
         if (!m_IsActive) return;
 
-        float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
+        float dt = DeltaTime();
         m_ElapsedTime += dt;
 
         float progress = std::min(m_ElapsedTime / m_FlightDuration, 1.0f);
-
-        // 紀錄更新前的位置，用來計算向量
         glm::vec2 oldPos = this->m_Transform.translation;
 
-        // --- 計算新位置 ---
         if (m_Target && m_Target->GetHP() > 0) {
             m_FinalLandPos = m_Target->GetPosition();
         }
 
         glm::vec2 currentGroundPos = glm::mix(m_StartPos, m_FinalLandPos, progress);
-        float currentHeight = m_MaxArcHeight * std::sin(progress * glm::pi<float>());
+        this->m_Transform.translation = currentGroundPos;
 
-        glm::vec2 newPos = currentGroundPos;
-        newPos.y += currentHeight;
-
-        // --- 計算旋轉角度 ---
-        glm::vec2 direction = newPos - oldPos;
-
-        // 確保有移動才旋轉，避免 direction 為零時 atan2 出錯
+        // 計算旋轉
+        glm::vec2 direction = currentGroundPos - oldPos;
         if (glm::length(direction) > 0.0001f) {
-            // atan2 回傳的是弧度 (Radians)
-            // 如果你的框架使用弧度：
             this->m_Transform.rotation = std::atan2(direction.y, direction.x);
-
-            // 如果你的框架使用角度 (Degrees)，請換成：
-            // this->m_Transform.rotation = std::atan2(direction.y, direction.x) * (180.0f / glm::pi<float>());
         }
 
-        // 更新實際位置
-        this->m_Transform.translation = newPos;
-
         if (progress >= 1.0f) {
-            if (m_Target && m_Target->GetHP() > 0) m_Target->TakeDamage(m_Damage);
+            if (m_Target && m_Target->GetHP() > 0) {
+                m_Target->TakeDamage(m_Damage, m_DamageType);
+            }
             m_IsActive = false;
         }
     }

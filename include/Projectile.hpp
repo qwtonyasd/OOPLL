@@ -7,38 +7,30 @@
 #include <memory>
 #include <glm/glm.hpp>
 #include "Util/Logger.hpp"
+
 class Projectile : public Util::GameObject {
 public:
-    Projectile(glm::vec2 startPos, std::shared_ptr<Enemy> target, float damage)
-        : m_Target(target), m_Damage(damage) {
+    // 確保這裡有 4 個參數
+    Projectile(glm::vec2 startPos, std::shared_ptr<Enemy> target, float damage, Enemy::DamageType damageType)
+        : m_Target(target), m_Damage(damage), m_DamageType(damageType) {
         m_Transform.translation = startPos;
+        m_ZIndex = 50.0f;
     }
 
     virtual ~Projectile() = default;
-
     virtual void Update() = 0;
-
     bool IsActive() const { return m_IsActive; }
 
-    // --- 這裡修正：移除 override ---
+    // 移除 override，因為 GameObject::Draw 可能是最上層
     virtual void Draw() {
         if (!m_IsActive) return;
-
-        // 1. 執行原本的繪製
         GameObject::Draw();
-
-        // 2. 暴力除錯：在 Console 印出目前子彈的詳細資訊
-        // 如果這個 Log 有跳，代表子彈邏輯是活著的
-        LOG_DEBUG("Projectile Type: {} | Pos: ({}, {}) | Z: {}",
-                  typeid(*this).name(),
-                  m_Transform.translation.x,
-                  m_Transform.translation.y,
-                  m_ZIndex);
     }
 
 protected:
     std::shared_ptr<Enemy> m_Target;
     float m_Damage;
+    Enemy::DamageType m_DamageType;
     float m_Speed = 600.0f;
     bool m_IsActive = true;
 

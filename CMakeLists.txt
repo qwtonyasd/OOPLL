@@ -62,6 +62,10 @@ add_executable(${PROJECT_NAME}
         src/Soldier.cpp
         include/Bomb.hpp
         include/MagicBolt.hpp
+        src/Hud.cpp
+        src/Enemy.cpp
+        include/VictoryMenu.hpp
+        src/VictoryMenu.cpp
 )
 
 if(MSVC)

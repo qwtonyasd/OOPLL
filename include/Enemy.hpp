@@ -6,92 +6,34 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <cmath> // 用於 round
 
 class Enemy : public Unit {
 public:
     enum class Type { GOBLIN, ORC };
     enum class State { MOVE_RIGHT, MOVE_UP, MOVE_DOWN, ATTACK, DEATH };
+    enum class DamageType { PHYSICAL, MAGIC }; // 新增傷害類型
 
     Enemy(Enemy::Type type, const std::vector<glm::vec2>& path, float speed, float hp,
           const std::vector<std::vector<std::string>>& moveAnimations,
           const std::vector<std::string>& attackPaths,
-          const std::vector<std::string>& deadPaths)
-        : Unit(path, speed, hp), m_Type(type), m_CurrentState(State::MOVE_RIGHT) {
+          const std::vector<std::string>& deadPaths);
 
-        m_MoveRightAni = std::make_shared<Util::Animation>(moveAnimations[0], true, 100, true, 0);
-        m_MoveUpAni    = std::make_shared<Util::Animation>(moveAnimations[1], true, 100, true, 0);
-        m_MoveDownAni  = std::make_shared<Util::Animation>(moveAnimations[2], true, 100, true, 0);
-        m_AttackAni    = std::make_shared<Util::Animation>(attackPaths, true, 100, true, 0);
-        m_DeadAni      = std::make_shared<Util::Animation>(deadPaths, false, 100, false, 0);
+    void Update() override;
 
-        SetDrawable(m_MoveRightAni);
-        SetZIndex(10.0f);
-    }
+    // 修改受傷函式，加入物理/魔法抗性邏輯
+    void TakeDamage(float damage, DamageType damageType = DamageType::PHYSICAL);
 
-    void Update() override {
-        if (m_HP <= 0 && m_CurrentState != State::DEATH) {
-            OnDeath();
-            return;
-        }
-        if (m_CurrentState == State::DEATH) return;
+    void UpdateDirection(glm::vec2 dir);
+    void SetState(State newState);
+    void OnDeath();
 
-        if (!m_IsBlocked) {
-            if (m_CurrentNodeIdx < m_Path.size()) {
-                glm::vec2 oldPos = m_Transform.translation;
-                MoveTowardsNextNode();
-                glm::vec2 dir = m_Transform.translation - oldPos;
-                if (glm::length(dir) > 0.1f) UpdateDirection(dir);
-            } else {
-                m_ReachedEnd = true;
-                m_HP = 0;
-            }
-        } else {
-            SetState(State::ATTACK);
-        }
-    }
-
-    void UpdateDirection(glm::vec2 dir) {
-        if (std::abs(dir.x) > std::abs(dir.y)) {
-            SetState(State::MOVE_RIGHT);
-            m_Transform.scale.x = (dir.x > 0) ? 1.0f : -1.0f;
-        } else {
-            m_Transform.scale.x = 1.0f;
-            if (dir.y > 0) SetState(State::MOVE_UP);
-            else SetState(State::MOVE_DOWN);
-        }
-    }
-
-    void SetState(State newState) {
-        if (m_CurrentState == newState) return;
-        m_CurrentState = newState;
-        switch (m_CurrentState) {
-            case State::MOVE_RIGHT: SetDrawable(m_MoveRightAni); break;
-            case State::MOVE_UP:    SetDrawable(m_MoveUpAni);    break;
-            case State::MOVE_DOWN:  SetDrawable(m_MoveDownAni);  break;
-            case State::ATTACK:     SetDrawable(m_AttackAni);    break;
-            case State::DEATH:      SetDrawable(m_DeadAni);      break;
-        }
-    }
-
-    void OnDeath() {
-        SetState(State::DEATH);
-        m_IsBlocked = false;
-        m_DeadAni->SetLooping(false);
-        m_DeadAni->SetCurrentFrame(0);
-        m_DeadAni->Play();
-    }
-
-    bool IsDeadAnimationFinished() const {
-        if (m_CurrentState != State::DEATH) return false;
-        return (m_DeadAni->GetState() == Util::Animation::State::ENDED) ||
-               (m_DeadAni->GetCurrentFrameIndex() >= m_DeadAni->GetFrameCount() - 1);
-    }
+    bool IsDeadAnimationFinished() const;
 
     Enemy::Type GetType() const { return m_Type; }
     glm::vec2 GetPosition() const { return m_Transform.translation; }
     void SetBlocked(bool b) { m_IsBlocked = b; }
     bool IsBlocked() const { return m_IsBlocked; }
-    void TakeDamage(float a) { m_HP -= a; }
     float GetHP() const { return m_HP; }
     bool ReachedEnd() const { return m_ReachedEnd; }
 
