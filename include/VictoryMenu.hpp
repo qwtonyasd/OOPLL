@@ -4,7 +4,6 @@
 #include "Util/GameObject.hpp"
 #include "Util/Image.hpp"
 #include "Util/Input.hpp"
-#include "Util/Keycode.hpp"
 #include <vector>
 #include <memory>
 
@@ -25,12 +24,10 @@ private:
     bool m_RestartPressed = false;
     bool m_ContinuePressed = false;
 
-    std::shared_ptr<Util::GameObject> m_Banner;   // 12.png
-    std::shared_ptr<Util::GameObject> m_ChainL;   // 9.png
-    std::shared_ptr<Util::GameObject> m_ChainR;   // 9.png
-    std::shared_ptr<Util::GameObject> m_BtnRestart;  // 10.png
-    std::shared_ptr<Util::GameObject> m_BtnContinue; // 11.png
-    std::vector<std::shared_ptr<Util::GameObject>> m_Stars; // 13.png
+    std::shared_ptr<Util::GameObject> m_Banner;
+    std::shared_ptr<Util::GameObject> m_BtnRestart;
+    std::shared_ptr<Util::GameObject> m_BtnContinue;
+    std::vector<std::shared_ptr<Util::GameObject>> m_Stars;
 
     bool IsMouseOver(std::shared_ptr<Util::GameObject> obj);
 };

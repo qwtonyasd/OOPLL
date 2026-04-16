@@ -2,39 +2,36 @@
 #include "Util/Logger.hpp"
 
 VictoryMenu::VictoryMenu() {
-    // 請確認此路徑與你的專案結構一致
     const std::string basePath = "../PTSD/assets/sprites/images/Start/";
 
+    // 1. Banner
     m_Banner = std::make_shared<Util::GameObject>();
     m_Banner->SetDrawable(std::make_shared<Util::Image>(basePath + "12.png"));
-    m_Banner->m_Transform.translation = {0, 100};
-    m_Banner->SetZIndex(10010.0f); // 設為極高圖層
+    m_Banner->m_Transform.translation = {0.0f, 100.0f};
+    m_Banner->m_Transform.scale = {1.0f, 1.0f};
+    m_Banner->SetZIndex(100.0f); // 只要大於地圖的 0 即可
 
-    m_ChainL = std::make_shared<Util::GameObject>();
-    m_ChainL->SetDrawable(std::make_shared<Util::Image>(basePath + "9.png"));
-    m_ChainL->m_Transform.translation = {-85, 0};
-    m_ChainL->SetZIndex(10000.0f);
-
-    m_ChainR = std::make_shared<Util::GameObject>();
-    m_ChainR->SetDrawable(std::make_shared<Util::Image>(basePath + "9.png"));
-    m_ChainR->m_Transform.translation = {85, 0};
-    m_ChainR->SetZIndex(10000.0f);
-
-    m_BtnContinue = std::make_shared<Util::GameObject>();
-    m_BtnContinue->SetDrawable(std::make_shared<Util::Image>(basePath + "11.png"));
-    m_BtnContinue->m_Transform.translation = {0, -10};
-    m_BtnContinue->SetZIndex(10005.0f);
-
+    // 2. Restart Button
     m_BtnRestart = std::make_shared<Util::GameObject>();
     m_BtnRestart->SetDrawable(std::make_shared<Util::Image>(basePath + "10.png"));
-    m_BtnRestart->m_Transform.translation = {0, -80};
-    m_BtnRestart->SetZIndex(10005.0f);
+    m_BtnRestart->m_Transform.translation = {0.0f, -80.0f};
+    m_BtnRestart->m_Transform.scale = {1.0f, 1.0f};
+    m_BtnRestart->SetZIndex(101.0f);
 
+    // 3. Continue Button
+    m_BtnContinue = std::make_shared<Util::GameObject>();
+    m_BtnContinue->SetDrawable(std::make_shared<Util::Image>(basePath + "11.png"));
+    m_BtnContinue->m_Transform.translation = {0.0f, -10.0f};
+    m_BtnContinue->m_Transform.scale = {1.0f, 1.0f};
+    m_BtnContinue->SetZIndex(101.0f);
+
+    // 4. Stars
     for (int i = 0; i < 3; ++i) {
         auto star = std::make_shared<Util::GameObject>();
         star->SetDrawable(std::make_shared<Util::Image>(basePath + "13.png"));
         star->m_Transform.translation = {-45.0f + i * 45.0f, 85.0f};
-        star->SetZIndex(10015.0f);
+        star->m_Transform.scale = {1.0f, 1.0f};
+        star->SetZIndex(102.0f);
         m_Stars.push_back(star);
     }
 }
@@ -56,9 +53,8 @@ void VictoryMenu::Update() {
 
 void VictoryMenu::Draw() {
     if (!m_Visible) return;
-    // 依序繪製
-    m_ChainL->Draw();
-    m_ChainR->Draw();
+
+    // 強制按順序繪製子物件
     m_Banner->Draw();
     m_BtnContinue->Draw();
     m_BtnRestart->Draw();
@@ -68,7 +64,7 @@ void VictoryMenu::Draw() {
 bool VictoryMenu::IsMouseOver(std::shared_ptr<Util::GameObject> obj) {
     glm::vec2 mousePos = Util::Input::GetCursorPosition();
     glm::vec2 objPos = obj->m_Transform.translation;
-    // 判定範圍修訂
-    return (mousePos.x >= objPos.x - 80.0f && mousePos.x <= objPos.x + 80.0f &&
-            mousePos.y >= objPos.y - 30.0f && mousePos.y <= objPos.y + 30.0f);
+    // 判定框範圍加寬，增加點擊容錯率
+    return (mousePos.x >= objPos.x - 100.0f && mousePos.x <= objPos.x + 100.0f &&
+            mousePos.y >= objPos.y - 40.0f && mousePos.y <= objPos.y + 40.0f);
 }
