@@ -2,7 +2,7 @@
 
 ArcherTower::ArcherTower(glm::vec2 pos)
     : Tower(pos, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/1.png",
-            250.0f, 0.8f, 10.0f, 70, Enemy::DamageType::PHYSICAL) {m_VisualOffset = 10.0f;}//m_VisualOffset蓋塔偏移
+            150.0f, 0.8f, 5.0f, 70, Enemy::DamageType::PHYSICAL) {m_VisualOffset = 10.0f;}//m_VisualOffset蓋塔偏移
 
 void ArcherTower::Attack(std::shared_ptr<Enemy> target,
                         std::vector<std::shared_ptr<Enemy>>& allEnemies,

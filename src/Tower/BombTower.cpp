@@ -7,7 +7,7 @@
  */
 BombTower::BombTower(glm::vec2 pos)
     : Tower(pos, "../PTSD/assets/sprites/images/BombTower/TowerLevel1/1.png",
-            150.0f, 2.5f, 40.0f, 150, Enemy::DamageType::PHYSICAL) {
+            100.0f, 2.5f, 11.0f, 150, Enemy::DamageType::PHYSICAL) {
 
     // 保留你原本要求的視覺位移量
     m_VisualOffset = 10.0f;

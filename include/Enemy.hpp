@@ -12,7 +12,7 @@ class Enemy : public Unit {
 public:
     enum class Type { GOBLIN, ORC };
     enum class State { MOVE_RIGHT, MOVE_UP, MOVE_DOWN, ATTACK, DEATH };
-    enum class DamageType { PHYSICAL, MAGIC }; // 新增傷害類型
+    enum class DamageType { PHYSICAL, MAGIC };
 
     Enemy(Enemy::Type type, const std::vector<glm::vec2>& path, float speed, float hp,
           const std::vector<std::vector<std::string>>& moveAnimations,
@@ -21,9 +21,7 @@ public:
 
     void Update() override;
 
-    // 修改受傷函式，加入物理/魔法抗性邏輯
     void TakeDamage(float damage, DamageType damageType = DamageType::PHYSICAL);
-
     void UpdateDirection(glm::vec2 dir);
     void SetState(State newState);
     void OnDeath();
@@ -37,11 +35,18 @@ public:
     float GetHP() const { return m_HP; }
     bool ReachedEnd() const { return m_ReachedEnd; }
 
+    // --- 新增：取得累積行進距離，供 Tower 鎖定邏輯使用 ---
+    float GetTotalTravelledDistance() const { return m_TotalDistanceTravelled; }
+
 private:
     Enemy::Type m_Type;
     State m_CurrentState;
     bool m_IsBlocked = false;
     bool m_ReachedEnd = false;
+
+    // --- 新增：累積行進距離變數 ---
+    float m_TotalDistanceTravelled = 0.0f;
+
     std::shared_ptr<Util::Animation> m_MoveRightAni, m_MoveUpAni, m_MoveDownAni, m_AttackAni, m_DeadAni;
 };
 

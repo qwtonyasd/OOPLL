@@ -35,7 +35,7 @@ public:
                 type,
                 path,
                 45.0f,
-                60.0f,
+                20.0f,
                 moveAnis,
                 generatePaths("Goblin", 15814, 15828), // 攻擊
                 generatePaths("Goblin", 15830, 15865)  // 死亡
@@ -54,7 +54,7 @@ public:
                 type,
                 path,
                 50.0f,
-                150.0f,
+                80.0f,
                 moveAnis,
                 generatePaths("Orc", 14958, 14968), // 攻擊
                 generatePaths("Orc", 14970, 15004)  // 死亡

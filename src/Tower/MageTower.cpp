@@ -3,7 +3,7 @@
 
 MageTower::MageTower(glm::vec2 pos)
     : Tower(pos, "../PTSD/assets/sprites/images/MageTower/TowerLevel1/1.png",
-            280.0f, 1.5f, 35.0f, 100, Enemy::DamageType::MAGIC) {
+            120.0f, 1.5f, 13.0f, 100, Enemy::DamageType::MAGIC) {
 
     // 假設魔法塔攻擊動畫有 10 張（可依據你的資源數量修改）
     for (int i = 1; i <= 15; ++i) {
