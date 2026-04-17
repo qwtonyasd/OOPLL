@@ -1,25 +1,47 @@
 #include "VictoryMenu.hpp"
+#include "Util/Image.hpp"
+#include "Util/Input.hpp"
 #include "Util/Logger.hpp"
 
 VictoryMenu::VictoryMenu() {
     const std::string basePath = "../PTSD/assets/sprites/images/Start/";
 
-    // 1. 載入你的合成大圖 (18.png)
     m_MainFrame = std::make_shared<Util::GameObject>();
     m_MainFrame->SetDrawable(std::make_shared<Util::Image>(basePath + "18.png"));
-    m_MainFrame->m_Transform.translation = {0.0f, 50.0f}; // 整體畫面稍微偏上
-    m_MainFrame->SetZIndex(100.0f);
+    m_MainFrame->m_Transform.translation = {0.0f, 50.0f};
+    m_MainFrame->SetZIndex(100.0f); // 背景層
+    m_MainFrame->SetVisible(false);
 
-    // 2. 疊加星星 (13.png)
-    // 即使你合成了大圖，星星還是分開控制比較好（例如將來要做動態亮起）
     for (int i = 0; i < 3; ++i) {
         auto star = std::make_shared<Util::GameObject>();
         star->SetDrawable(std::make_shared<Util::Image>(basePath + "13.png"));
-        // 配合 18.png 的圓孔座標偏移
-        float xOffset = (i - 1) * 42.0f;
-        star->m_Transform.translation = {xOffset, 135.0f}; // 135 是配合橫幅高度
-        star->SetZIndex(110.0f);
+
+        // 相對於 18.png 中心點的偏移
+        float xOffset = (static_cast<float>(i) - 1.0f) * 60.0f;
+        star->m_Transform.translation = {xOffset, 135.0f};
+
+        // 強制星星 ZIndex 高於背景
+        star->SetZIndex(250.0f);
+        star->SetVisible(false);
+
+        // 建立父子關係
+        m_MainFrame->AddChild(star);
         m_Stars.push_back(star);
+    }
+}
+
+void VictoryMenu::SetVisible(bool visible, int currentHP) {
+    m_Visible = visible;
+    m_MainFrame->SetVisible(visible);
+
+    if (visible) {
+        ResetFlags();
+        // 根據血量決定顯示幾顆星星
+        int starsCount = (currentHP >= 20) ? 3 : (currentHP >= 10 ? 2 : (currentHP > 0 ? 1 : 0));
+        for (int i = 0; i < 3; ++i) {
+            m_Stars[i]->SetVisible(i < starsCount);
+        }
+        LOG_INFO("Victory Menu Visible: {} stars displayed", starsCount);
     }
 }
 
@@ -30,15 +52,10 @@ void VictoryMenu::Update() {
         float cx = m_MainFrame->m_Transform.translation.x;
         float cy = m_MainFrame->m_Transform.translation.y;
 
-        // --- 判定 Continue 按鈕區域 ---
-        // 寬度約 180, 高度約 55
-        if (IsMouseInsideRect(cx, cy - 65.0f, 180.0f, 55.0f)) {
-            LOG_DEBUG("Continue Clicked - Signal Sent");
+        if (IsMouseInsideRect(cx, cy - 65.0f, 180.0f, 50.0f)) {
             m_ContinuePressed = true;
         }
-        // --- 判定 Restart 按鈕區域 ---
-        else if (IsMouseInsideRect(cx, cy - 140.0f, 180.0f, 55.0f)) {
-            LOG_DEBUG("Restart Clicked - Signal Sent");
+        else if (IsMouseInsideRect(cx, cy - 145.0f, 180.0f, 50.0f)) {
             m_RestartPressed = true;
         }
     }
@@ -46,14 +63,12 @@ void VictoryMenu::Update() {
 
 void VictoryMenu::Draw() {
     if (!m_Visible) return;
+    // PTSD 會自動繪製 Children
     m_MainFrame->Draw();
-    for (auto& star : m_Stars) {
-        star->Draw();
-    }
 }
 
 bool VictoryMenu::IsMouseInsideRect(float x, float y, float w, float h) {
     glm::vec2 mousePos = Util::Input::GetCursorPosition();
-    return (mousePos.x >= x - w/2 && mousePos.x <= x + w/2 &&
-            mousePos.y >= y - h/2 && mousePos.y <= y + h/2);
+    return (mousePos.x >= x - w/2.0f && mousePos.x <= x + w/2.0f &&
+            mousePos.y >= y - h/2.0f && mousePos.y <= y + h/2.0f);
 }

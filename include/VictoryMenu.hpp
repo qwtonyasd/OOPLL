@@ -1,34 +1,43 @@
 #ifndef VICTORY_MENU_HPP
 #define VICTORY_MENU_HPP
 
-#include "Util/GameObject.hpp"
-#include "Util/Image.hpp"
-#include "Util/Input.hpp"
 #include <vector>
 #include <memory>
+#include "Util/GameObject.hpp"
 
 class VictoryMenu {
 public:
     VictoryMenu();
+
     void Update();
     void Draw();
-    void SetVisible(bool visible) { m_Visible = visible; }
+
+    void SetVisible(bool visible, int currentHP = 0);
+
+    // 讓 App 判斷狀態
     bool IsVisible() const { return m_Visible; }
 
-    bool IsRestartPressed() const { return m_RestartPressed; }
+    void ResetFlags() {
+        m_ContinuePressed = false;
+        m_RestartPressed = false;
+    }
+
     bool IsContinuePressed() const { return m_ContinuePressed; }
-    void ResetFlags() { m_RestartPressed = false; m_ContinuePressed = false; }
+    bool IsRestartPressed() const { return m_RestartPressed; }
+
+    // --- 新增：取得根物件，以便掛載到 App 的 m_Root ---
+    std::shared_ptr<Util::GameObject> GetGameObject() { return m_MainFrame; }
 
 private:
+    bool IsMouseInsideRect(float x, float y, float w, float h);
+
+private:
+    std::shared_ptr<Util::GameObject> m_MainFrame; // 18.png
+    std::vector<std::shared_ptr<Util::GameObject>> m_Stars; // 13.png
+
     bool m_Visible = false;
-    bool m_RestartPressed = false;
     bool m_ContinuePressed = false;
-
-    std::shared_ptr<Util::GameObject> m_MainFrame; // 合成圖 18.png
-    std::vector<std::shared_ptr<Util::GameObject>> m_Stars; // 星星 13.png
-
-    // 輔助函式：檢查點擊範圍
-    bool IsMouseInsideRect(float centerX, float centerY, float width, float height);
+    bool m_RestartPressed = false;
 };
 
 #endif
