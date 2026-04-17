@@ -4,34 +4,21 @@
 VictoryMenu::VictoryMenu() {
     const std::string basePath = "../PTSD/assets/sprites/images/Start/";
 
-    // 1. Banner
-    m_Banner = std::make_shared<Util::GameObject>();
-    m_Banner->SetDrawable(std::make_shared<Util::Image>(basePath + "12.png"));
-    m_Banner->m_Transform.translation = {0.0f, 100.0f};
-    m_Banner->m_Transform.scale = {1.0f, 1.0f};
-    m_Banner->SetZIndex(100.0f); // 只要大於地圖的 0 即可
+    // 1. 載入你的合成大圖 (18.png)
+    m_MainFrame = std::make_shared<Util::GameObject>();
+    m_MainFrame->SetDrawable(std::make_shared<Util::Image>(basePath + "18.png"));
+    m_MainFrame->m_Transform.translation = {0.0f, 50.0f}; // 整體畫面稍微偏上
+    m_MainFrame->SetZIndex(100.0f);
 
-    // 2. Restart Button
-    m_BtnRestart = std::make_shared<Util::GameObject>();
-    m_BtnRestart->SetDrawable(std::make_shared<Util::Image>(basePath + "10.png"));
-    m_BtnRestart->m_Transform.translation = {0.0f, -80.0f};
-    m_BtnRestart->m_Transform.scale = {1.0f, 1.0f};
-    m_BtnRestart->SetZIndex(101.0f);
-
-    // 3. Continue Button
-    m_BtnContinue = std::make_shared<Util::GameObject>();
-    m_BtnContinue->SetDrawable(std::make_shared<Util::Image>(basePath + "11.png"));
-    m_BtnContinue->m_Transform.translation = {0.0f, -10.0f};
-    m_BtnContinue->m_Transform.scale = {1.0f, 1.0f};
-    m_BtnContinue->SetZIndex(101.0f);
-
-    // 4. Stars
+    // 2. 疊加星星 (13.png)
+    // 即使你合成了大圖，星星還是分開控制比較好（例如將來要做動態亮起）
     for (int i = 0; i < 3; ++i) {
         auto star = std::make_shared<Util::GameObject>();
         star->SetDrawable(std::make_shared<Util::Image>(basePath + "13.png"));
-        star->m_Transform.translation = {-45.0f + i * 45.0f, 85.0f};
-        star->m_Transform.scale = {1.0f, 1.0f};
-        star->SetZIndex(102.0f);
+        // 配合 18.png 的圓孔座標偏移
+        float xOffset = (i - 1) * 42.0f;
+        star->m_Transform.translation = {xOffset, 135.0f}; // 135 是配合橫幅高度
+        star->SetZIndex(110.0f);
         m_Stars.push_back(star);
     }
 }
@@ -40,31 +27,33 @@ void VictoryMenu::Update() {
     if (!m_Visible) return;
 
     if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-        if (IsMouseOver(m_BtnRestart)) {
-            LOG_DEBUG("Restart Pressed");
-            m_RestartPressed = true;
-        }
-        if (IsMouseOver(m_BtnContinue)) {
-            LOG_DEBUG("Continue Pressed");
+        float cx = m_MainFrame->m_Transform.translation.x;
+        float cy = m_MainFrame->m_Transform.translation.y;
+
+        // --- 判定 Continue 按鈕區域 ---
+        // 寬度約 180, 高度約 55
+        if (IsMouseInsideRect(cx, cy - 65.0f, 180.0f, 55.0f)) {
+            LOG_DEBUG("Continue Clicked - Signal Sent");
             m_ContinuePressed = true;
+        }
+        // --- 判定 Restart 按鈕區域 ---
+        else if (IsMouseInsideRect(cx, cy - 140.0f, 180.0f, 55.0f)) {
+            LOG_DEBUG("Restart Clicked - Signal Sent");
+            m_RestartPressed = true;
         }
     }
 }
 
 void VictoryMenu::Draw() {
     if (!m_Visible) return;
-
-    // 強制按順序繪製子物件
-    m_Banner->Draw();
-    m_BtnContinue->Draw();
-    m_BtnRestart->Draw();
-    for (auto& star : m_Stars) star->Draw();
+    m_MainFrame->Draw();
+    for (auto& star : m_Stars) {
+        star->Draw();
+    }
 }
 
-bool VictoryMenu::IsMouseOver(std::shared_ptr<Util::GameObject> obj) {
+bool VictoryMenu::IsMouseInsideRect(float x, float y, float w, float h) {
     glm::vec2 mousePos = Util::Input::GetCursorPosition();
-    glm::vec2 objPos = obj->m_Transform.translation;
-    // 判定框範圍加寬，增加點擊容錯率
-    return (mousePos.x >= objPos.x - 100.0f && mousePos.x <= objPos.x + 100.0f &&
-            mousePos.y >= objPos.y - 40.0f && mousePos.y <= objPos.y + 40.0f);
+    return (mousePos.x >= x - w/2 && mousePos.x <= x + w/2 &&
+            mousePos.y >= y - h/2 && mousePos.y <= y + h/2);
 }

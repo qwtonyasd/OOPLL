@@ -24,12 +24,11 @@ private:
     bool m_RestartPressed = false;
     bool m_ContinuePressed = false;
 
-    std::shared_ptr<Util::GameObject> m_Banner;
-    std::shared_ptr<Util::GameObject> m_BtnRestart;
-    std::shared_ptr<Util::GameObject> m_BtnContinue;
-    std::vector<std::shared_ptr<Util::GameObject>> m_Stars;
+    std::shared_ptr<Util::GameObject> m_MainFrame; // 合成圖 18.png
+    std::vector<std::shared_ptr<Util::GameObject>> m_Stars; // 星星 13.png
 
-    bool IsMouseOver(std::shared_ptr<Util::GameObject> obj);
+    // 輔助函式：檢查點擊範圍
+    bool IsMouseInsideRect(float centerX, float centerY, float width, float height);
 };
 
 #endif

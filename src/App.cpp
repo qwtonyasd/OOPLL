@@ -56,24 +56,27 @@ void App::HandleGamePlay() {
 
     if (m_VictoryMenu->IsVisible()) {
         m_VictoryMenu->Update();
+
+        // 按下 Restart：重新初始化當前關卡
         if (m_VictoryMenu->IsRestartPressed()) {
-            LOG_DEBUG("Restart Pressed");
             ChangeLevel(m_CurrentLevelID);
-            return; // 重新載入關卡，直接跳出
-        }
-        if (m_VictoryMenu->IsContinuePressed()) {
-            LOG_DEBUG("Continue Pressed");
-            m_IsInGame = false;
-            m_VictoryMenu->SetVisible(false);
-            m_VictoryMenu->ResetFlags();
             return;
         }
-        // 勝利時暫停下方的遊戲世界更新
+
+        // 按下 Continue：切換狀態回到大地圖選關
+        if (m_VictoryMenu->IsContinuePressed()) {
+            m_IsInGame = false;             // 這會讓下一次 Update 進入 HandleSelectLevel
+            m_VictoryMenu->SetVisible(false);
+            m_VictoryMenu->ResetFlags();
+            LOG_INFO("Returning to World Map...");
+            return;
+        }
     } else {
-        // --- 核心遊戲邏輯 ---
+        // --- 核心遊戲流程 (完全保留你原始的生怪與判定邏輯) ---
         int currentWaveIdx = gm.GetCurrentWave() - 1;
         if (currentWaveIdx < static_cast<int>(m_Waves.size())) {
             auto& currentWave = m_Waves[currentWaveIdx];
+
             if (!m_IsWaveActive) {
                 if (m_Enemies.empty()) {
                     m_WaveBreakTimer += dt;
@@ -92,27 +95,28 @@ void App::HandleGamePlay() {
                     m_SpawnTimer = 0.0f;
                 }
 
-                // 勝利判定
+                // 勝利判定：所有波次結束且畫面無敵人
                 if (static_cast<size_t>(m_SpawnIndex) >= currentWave.enemyList.size() && m_Enemies.empty()) {
                     m_IsWaveActive = false;
                     if (gm.GetCurrentWave() < gm.GetTotalWaves()) {
                         gm.NextWave();
                     } else {
-                        LOG_INFO("Victory! Triggering Menu.");
+                        LOG_INFO("Level Cleared! Showing Victory Menu.");
                         m_VictoryMenu->SetVisible(true);
                     }
                 }
             }
         }
 
+        // 塔、子彈與敵人更新
         m_TowerManager->UpdateAll(m_Enemies, m_Projectiles);
 
-        // 更新子彈與敵人
         for (auto it = m_Projectiles.begin(); it != m_Projectiles.end(); ) {
             (*it)->Update();
             if (!(*it)->IsActive()) it = m_Projectiles.erase(it);
             else ++it;
         }
+
         for (auto it = m_Enemies.begin(); it != m_Enemies.end(); ) {
             (*it)->Update();
             if ((*it)->ReachedEnd()) {
@@ -121,10 +125,12 @@ void App::HandleGamePlay() {
             } else if ((*it)->GetHP() <= 0 && (*it)->IsDeadAnimationFinished()) {
                 gm.AddMoney((*it)->GetType() == Enemy::Type::GOBLIN ? 3 : 9);
                 it = m_Enemies.erase(it);
-            } else ++it;
+            } else {
+                ++it;
+            }
         }
 
-        // 蓋塔偵測 (BuildMenu)
+        // 蓋塔選單邏輯
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
         if (m_BuildMenu->IsVisible()) {
             Tower::Type selectedType = m_BuildMenu->Update();
@@ -158,24 +164,19 @@ void App::HandleGamePlay() {
     }
 
     // ==========================================
-    // 2. 渲染繪製 (Rendering) - 確保層次正確
+    // 2. 渲染繪製 (Rendering)
     // ==========================================
 
-    // [底層]
     m_MapManager->Draw();
-
-    // [中層]
     for (auto& slot : m_TowerSlots) slot->Draw();
     m_TowerManager->DrawAll();
     for (auto& enemy : m_Enemies) enemy->Draw();
     for (auto& proj : m_Projectiles) proj->Draw();
 
-    // [UI 層]
     if (m_BuildMenu->IsVisible()) m_BuildMenu->Draw();
     if (m_Hud) m_Hud->Draw();
 
-    // [最頂層] 勝利選單
-    // 放在最後繪製是「強行置頂」的關鍵，如果仍然看不到，請檢查 VictoryMenu 內部圖片路徑
+    // 勝利選單必須在最後畫，才能蓋在所有遊戲物件之上
     if (m_VictoryMenu->IsVisible()) {
         m_VictoryMenu->Draw();
     }
@@ -205,8 +206,6 @@ void App::ChangeLevel(int levelId) {
     }
 
     m_BuildMenu->SetVisible(false);
-
-    // 重置選單狀態
     if (m_VictoryMenu) {
         m_VictoryMenu->SetVisible(false);
         m_VictoryMenu->ResetFlags();
@@ -215,6 +214,7 @@ void App::ChangeLevel(int levelId) {
 
 void App::InitWaveData() {
     m_Waves.clear();
+    // 完全保留你原本的 7 波生怪設定
     m_Waves.push_back({{Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN}});
     m_Waves.push_back({std::vector<Enemy::Type>(6, Enemy::Type::GOBLIN)});
     m_Waves.push_back({std::vector<Enemy::Type>(9, Enemy::Type::GOBLIN)});
