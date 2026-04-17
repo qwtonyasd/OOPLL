@@ -5,6 +5,7 @@ Barracks::Barracks(glm::vec2 pos, const std::vector<glm::vec2>& route)
     : Tower(pos, "../PTSD/assets/sprites/images/BarracksTower/TowerLevel1/1.png",
             0.0f, 10.0f, 0.0f, 70, Enemy::DamageType::PHYSICAL), m_Route(route) {
     for (int i = 0; i < m_MaxSoldiers; ++i) SpawnSoldier();
+    m_VisualOffset = 10.0f;
 }
 
 void Barracks::Update(std::vector<std::shared_ptr<Enemy>>& enemies,

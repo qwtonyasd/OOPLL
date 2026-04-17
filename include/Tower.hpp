@@ -19,7 +19,8 @@ public:
         MAGE,
         BOMB
     };
-
+    virtual void UpdateAnimation() {} // 預設不做事
+    // 修正：確保這個靜態函式存在於類別中，讓 App.cpp 可以呼叫
     static int GetBaseCost(Type type) {
         switch (type) {
             case Type::ARCHER:   return 70;
@@ -30,7 +31,6 @@ public:
         }
     }
 
-    // 建構子新增 DamageType，方便區分物理或魔法塔
     Tower(const glm::vec2& pos, const std::string& imgPath, float range, float cooldown, float damage, int cost, Enemy::DamageType damageType = Enemy::DamageType::PHYSICAL)
         : m_Range(range), m_Cooldown(cooldown), m_Damage(damage), m_Cost(cost), m_DamageType(damageType) {
         m_Transform.translation = pos;
@@ -40,8 +40,21 @@ public:
 
     virtual ~Tower() = default;
 
-    virtual void Draw()  {
+    // 修正：如果編譯器抱怨 override，通常是基底類別 GameObject 的 Draw 不是虛擬函式
+    // 在這裡我們先拿掉 override 關鍵字，但保留視覺偏移邏輯
+    virtual void Draw() {
+        if (!m_Drawable) return;
+
+        glm::vec2 originalPos = m_Transform.translation;
+
+        // 套用視覺偏移量
+        m_Transform.translation.y += m_VisualOffset;
+
+        // 呼叫父類別的繪製
         GameObject::Draw();
+
+        // 繪製完後立刻還原座標，避免影響邏輯運算
+        m_Transform.translation = originalPos;
     }
 
     virtual void Update(std::vector<std::shared_ptr<Enemy>>& enemies,
@@ -80,7 +93,10 @@ protected:
     float m_Range, m_Cooldown, m_Damage;
     float m_Timer = 0.0f;
     int m_Cost;
-    Enemy::DamageType m_DamageType; // 此塔造成的傷害類型
+    Enemy::DamageType m_DamageType;
+
+    // 新增：視覺偏移量，預設為 0
+    float m_VisualOffset = 0.0f;
 };
 
 #endif
