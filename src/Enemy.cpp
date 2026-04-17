@@ -25,8 +25,13 @@ void Enemy::Update() {
 
     if (!m_IsBlocked) {
         if (m_CurrentNodeIdx < m_Path.size()) {
+            // 紀錄位移進度
             glm::vec2 oldPos = m_Transform.translation;
             MoveTowardsNextNode();
+
+            float frameDist = glm::distance(m_Transform.translation, oldPos);
+            m_TotalDistanceTravelled += frameDist; // 剛才新增的邏輯
+
             glm::vec2 dir = m_Transform.translation - oldPos;
             if (glm::length(dir) > 0.1f) UpdateDirection(dir);
         } else {
@@ -38,24 +43,18 @@ void Enemy::Update() {
     }
 }
 
+// 修正 LNK 錯誤：確保 TakeDamage 有完整定義
 void Enemy::TakeDamage(float damage, DamageType damageType) {
     float finalDamage = damage;
-
-    // 獸人護甲邏輯：受到物理傷害時，傷害 / 1.5
     if (m_Type == Enemy::Type::ORC && damageType == DamageType::PHYSICAL) {
-        // 使用 std::round 進行四捨五入
         finalDamage = std::round(damage / 1.5f);
-        
-        // 最低傷害限制為 1
-        if (finalDamage < 1.0f) {
-            finalDamage = 1.0f;
-        }
+        if (finalDamage < 1.0f) finalDamage = 1.0f;
     }
-
     m_HP -= finalDamage;
     if (m_HP < 0) m_HP = 0;
 }
 
+// 修正 LNK 錯誤：確保 UpdateDirection 有完整定義
 void Enemy::UpdateDirection(glm::vec2 dir) {
     if (std::abs(dir.x) > std::abs(dir.y)) {
         SetState(State::MOVE_RIGHT);
@@ -67,6 +66,7 @@ void Enemy::UpdateDirection(glm::vec2 dir) {
     }
 }
 
+// 修正 LNK 錯誤：確保 SetState 有完整定義
 void Enemy::SetState(State newState) {
     if (m_CurrentState == newState) return;
     m_CurrentState = newState;
@@ -79,6 +79,7 @@ void Enemy::SetState(State newState) {
     }
 }
 
+// 修正 LNK 錯誤：確保 OnDeath 有完整定義
 void Enemy::OnDeath() {
     SetState(State::DEATH);
     m_IsBlocked = false;
@@ -87,8 +88,10 @@ void Enemy::OnDeath() {
     m_DeadAni->Play();
 }
 
+// 修正 LNK 錯誤：確保 IsDeadAnimationFinished 有完整定義
 bool Enemy::IsDeadAnimationFinished() const {
     if (m_CurrentState != State::DEATH) return false;
+    if (!m_DeadAni) return true;
     return (m_DeadAni->GetState() == Util::Animation::State::ENDED) ||
            (m_DeadAni->GetCurrentFrameIndex() >= m_DeadAni->GetFrameCount() - 1);
 }

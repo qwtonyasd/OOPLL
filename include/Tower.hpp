@@ -10,6 +10,7 @@
 #include <memory>
 #include <glm/glm.hpp>
 #include <string>
+#include <limits> // 用於 float 的無限大判斷
 
 class Tower : public Util::GameObject {
 public:
@@ -32,27 +33,25 @@ public:
         m_Transform.translation = pos;
         SetDrawable(std::make_shared<Util::Image>(imgPath));
 
-        // 1. 修改自己的 ZIndex (因為 Tower 繼承自 GameObject，可以直接存取)
+        // 1. 修改自己的 ZIndex (繼承自 GameObject，可直接存取)
         m_ZIndex = 7.0f;
 
-        // 2. 初始化子物件
+        // 2. 初始化範圍指示器 (Range Indicator)
         m_RangeIndicator = std::make_shared<Util::GameObject>();
+        // 注意：請確保路徑下的圖片存在
         m_RangeIndicator->SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/Start/7.png"));
+        m_RangeIndicator->SetZIndex(5.0f); // 透過 Setter 修改
 
-        // 修正點：使用 SetZIndex 函式而非直接存取變數
-        m_RangeIndicator->SetZIndex(5.0f);
-
+        // 3. 初始化升級選單 (Upgrade Menu)
         m_UpgradeMenu = std::make_shared<Util::GameObject>();
         m_UpgradeMenu->SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/UI/upgrade_menu.png"));
-
-        // 修正點：使用 SetZIndex 函式
-        m_UpgradeMenu->SetZIndex(99.0f);
+        m_UpgradeMenu->SetZIndex(99.0f); // 透過 Setter 修改
     }
 
     virtual ~Tower() = default;
 
-    // 重要：保持 virtual，這樣子類別的 override 才會生效
-    virtual void Draw() {
+    // 繪製邏輯
+    virtual void Draw()  {
         // 1. 如果選取中，先畫範圍圈
         if (m_IsSelected && m_RangeIndicator) {
             UpdateRangeIndicator();
@@ -69,6 +68,7 @@ public:
 
         // 3. 如果選取中，最後畫升級選單
         if (m_IsSelected && m_UpgradeMenu) {
+            // 將選單位置稍微移到塔上方
             m_UpgradeMenu->m_Transform.translation = m_Transform.translation + glm::vec2(0, 60);
             m_UpgradeMenu->Draw();
         }
@@ -78,13 +78,15 @@ public:
     void UpdateRangeIndicator() {
         if (m_RangeIndicator) {
             m_RangeIndicator->m_Transform.translation = m_Transform.translation;
-            float textureRadius = 125.0f; // 假設圖片半徑
+            // 假設圖片原始半徑為 125 像素，根據實際 m_Range 進行縮放
+            float textureRadius = 125.0f;
             float scale = m_Range / textureRadius;
             m_RangeIndicator->m_Transform.scale = {scale, scale};
         }
     }
 
     void SetSelected(bool selected) { m_IsSelected = selected; }
+
     bool IsMouseHovering(const glm::vec2& mousePos) {
         return glm::distance(m_Transform.translation, mousePos) < 40.0f;
     }
@@ -103,6 +105,7 @@ public:
         }
     }
 
+    // 純虛擬函式，由 ArcherTower, MageTower 等子類別實作
     virtual void Attack(std::shared_ptr<Enemy> target,
                         std::vector<std::shared_ptr<Enemy>>& allEnemies,
                         std::vector<std::shared_ptr<Projectile>>& projectiles) = 0;
@@ -110,18 +113,31 @@ public:
     virtual void UpdateAnimation() {}
 
 protected:
+    // --- 核心邏輯：尋找在射程內且路徑進度最領先的怪 ---
     std::shared_ptr<Enemy> FindTarget(const std::vector<std::shared_ptr<Enemy>>& enemies) {
-        std::shared_ptr<Enemy> closest = nullptr;
-        float minDistance = m_Range;
+        std::shared_ptr<Enemy> bestTarget = nullptr;
+        float maxProgress = -1.0f; // 我們要找的是累積距離最大的對象
+
         for (const auto& enemy : enemies) {
-            if (!enemy || enemy->GetHP() <= 0) continue;
+            // 基本過濾：排除不存在、已死亡、或已到終點的敵人
+            if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) continue;
+
+            // 計算塔與敵人間的物理距離
             float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
-            if (dist < minDistance) {
-                minDistance = dist;
-                closest = enemy;
+
+            // 檢查是否在射程內
+            if (dist <= m_Range) {
+                // 取得敵人已走過的總路徑長度
+                float currentProgress = enemy->GetTotalTravelledDistance();
+
+                // 如果這個敵人的進度領先目前所有的候選者，則更新目標
+                if (currentProgress > maxProgress) {
+                    maxProgress = currentProgress;
+                    bestTarget = enemy;
+                }
             }
         }
-        return closest;
+        return bestTarget;
     }
 
     float m_Range, m_Cooldown, m_Damage;
