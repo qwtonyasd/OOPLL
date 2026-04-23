@@ -8,7 +8,7 @@ ArcherTower::ArcherTower(glm::vec2 pos)
     : Tower(pos, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/3.png",
             150.0f, 0.8f, 5.0f, 70, Enemy::DamageType::PHYSICAL) {
 
-    m_VisualOffset = 18.0f; // 站在塔頂的高度
+    m_VisualOffset = 20.0f; // 站在塔頂的高度
 
     // 1. 載入底座
     m_BaseDrawable = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/2.png");
@@ -110,6 +110,9 @@ void ArcherTower::Draw() {
 
     // 備份原始座標
     glm::vec2 originalPos = m_Transform.translation;
+
+    // --- 調整這裡的數值 (例如 +10 或 +20)，直到位置看起來正確 ---
+    m_Transform.translation.y += 5.0f;
     float originalZ = m_ZIndex;
 
     // ... 接下來是你原本畫底座與小人的代碼 ...

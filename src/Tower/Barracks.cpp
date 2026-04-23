@@ -62,7 +62,10 @@ void Barracks::Update(std::vector<std::shared_ptr<Enemy>>& enemies,
 
 void Barracks::SpawnSoldier(int slotIndex) {
     glm::vec2 baseRallyPoint = MapData::GetBaseRallyPoint(m_Transform.translation);
+    glm::vec2 originalPos = m_Transform.translation;
 
+    // --- 調整這裡的數值 (例如 +10 或 +20)，直到位置看起來正確 ---
+    m_Transform.translation.y += 3.0f;
     // 陣型偏移
     glm::vec2 formationOffset;
     if (slotIndex == 0)      formationOffset = {0, 0};
