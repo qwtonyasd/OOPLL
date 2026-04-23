@@ -6,10 +6,9 @@
 #include <vector>
 #include <memory>
 
-// 必須繼承 enable_shared_from_this 才能在 SearchForEnemy 裡使用 shared_from_this()
 class Soldier : public Unit, public std::enable_shared_from_this<Soldier> {
 public:
-    enum class State { MOVE_TO_RALLY, IDLE, BLOCKING, DEATH };
+    enum class State { MOVE_TO_RALLY, IDLE, CHASE, BLOCKING, DEATH };
 
     Soldier(glm::vec2 spawnPos, glm::vec2 rallyPoint, float speed, float hp = 50.0f);
 
@@ -22,10 +21,15 @@ public:
     void ReleaseEnemy();
     void SetState(State newState);
 
+    // --- 指揮官介面 ---
+    void EngageTarget(std::shared_ptr<Enemy> enemy);
+    bool IsAvailable() const;
+
 private:
     void UpdateAnimation(float dt);
     void MoveTowardsRallyPoint();
     void SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies);
+    void ChaseEnemy(float dt);
     void PerformAttack(float dt);
     void UpdateIdleRotation(float dt);
 
@@ -36,12 +40,13 @@ private:
     float m_AnimTimer = 0.0f;
     int m_FrameIndex = 1;
     bool m_IsDeadAnimDone = false;
-
     float m_AttackTimer = 0.0f;
     float m_AttackCooldown = 1.0f;
-
     float m_TurnTimer = 0.0f;
     float m_NextTurnTime = 0.0f;
+
+    float m_DetectionRange = 120.0f;
+    float m_MeleeRange = 25.0f;
 };
 
 #endif
