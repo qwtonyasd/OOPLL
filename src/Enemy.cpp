@@ -1,4 +1,6 @@
 #include "Enemy.hpp"
+#include "Soldier.hpp" // 必須包含以呼叫 TakeDamage
+#include "Util/Time.hpp"
 
 Enemy::Enemy(Enemy::Type type, const std::vector<glm::vec2>& path, float speed, float hp,
              const std::vector<std::vector<std::string>>& moveAnimations,
@@ -17,20 +19,39 @@ Enemy::Enemy(Enemy::Type type, const std::vector<glm::vec2>& path, float speed, 
 }
 
 void Enemy::Update() {
+    float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
+
     if (m_HP <= 0 && m_CurrentState != State::DEATH) {
         OnDeath();
         return;
     }
     if (m_CurrentState == State::DEATH) return;
 
+    if (m_IsBlocked) {
+        SetState(State::ATTACK);
+
+        // --- 核心反擊邏輯 ---
+        if (m_TargetSoldier && m_TargetSoldier->GetHP() > 0) {
+            m_AttackTimer += dt;
+            if (m_AttackTimer >= m_AttackCooldown) {
+                // 根據怪物種類設定傷害：哥布林 5, 獸人 12
+                float dmg = (m_Type == Type::GOBLIN) ? 5.0f : 12.0f;
+                m_TargetSoldier->TakeDamage(dmg);
+                m_AttackTimer = 0.0f; // 重置攻擊冷卻
+            }
+        } else {
+            // 如果士兵死了，恢復移動
+            SetBlocked(false, nullptr);
+        }
+    }
+
+    // 如果沒被擋住，執行路徑移動
     if (!m_IsBlocked) {
         if (m_CurrentNodeIdx < m_Path.size()) {
-            // 紀錄位移進度
             glm::vec2 oldPos = m_Transform.translation;
             MoveTowardsNextNode();
 
-            float frameDist = glm::distance(m_Transform.translation, oldPos);
-            m_TotalDistanceTravelled += frameDist; // 剛才新增的邏輯
+            m_TotalDistanceTravelled += glm::distance(m_Transform.translation, oldPos);
 
             glm::vec2 dir = m_Transform.translation - oldPos;
             if (glm::length(dir) > 0.1f) UpdateDirection(dir);
@@ -38,12 +59,9 @@ void Enemy::Update() {
             m_ReachedEnd = true;
             m_HP = 0;
         }
-    } else {
-        SetState(State::ATTACK);
     }
 }
 
-// 修正 LNK 錯誤：確保 TakeDamage 有完整定義
 void Enemy::TakeDamage(float damage, DamageType damageType) {
     float finalDamage = damage;
     if (m_Type == Enemy::Type::ORC && damageType == DamageType::PHYSICAL) {
@@ -54,7 +72,6 @@ void Enemy::TakeDamage(float damage, DamageType damageType) {
     if (m_HP < 0) m_HP = 0;
 }
 
-// 修正 LNK 錯誤：確保 UpdateDirection 有完整定義
 void Enemy::UpdateDirection(glm::vec2 dir) {
     if (std::abs(dir.x) > std::abs(dir.y)) {
         SetState(State::MOVE_RIGHT);
@@ -66,10 +83,10 @@ void Enemy::UpdateDirection(glm::vec2 dir) {
     }
 }
 
-// 修正 LNK 錯誤：確保 SetState 有完整定義
 void Enemy::SetState(State newState) {
     if (m_CurrentState == newState) return;
     m_CurrentState = newState;
+    m_AttackTimer = 0.0f; // 切換狀態時重置攻擊計時
     switch (m_CurrentState) {
         case State::MOVE_RIGHT: SetDrawable(m_MoveRightAni); break;
         case State::MOVE_UP:    SetDrawable(m_MoveUpAni);    break;
@@ -79,16 +96,15 @@ void Enemy::SetState(State newState) {
     }
 }
 
-// 修正 LNK 錯誤：確保 OnDeath 有完整定義
 void Enemy::OnDeath() {
     SetState(State::DEATH);
     m_IsBlocked = false;
+    m_TargetSoldier = nullptr;
     m_DeadAni->SetLooping(false);
     m_DeadAni->SetCurrentFrame(0);
     m_DeadAni->Play();
 }
 
-// 修正 LNK 錯誤：確保 IsDeadAnimationFinished 有完整定義
 bool Enemy::IsDeadAnimationFinished() const {
     if (m_CurrentState != State::DEATH) return false;
     if (!m_DeadAni) return true;
