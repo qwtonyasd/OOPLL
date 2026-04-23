@@ -4,7 +4,7 @@
 
 Barracks::Barracks(glm::vec2 pos, const std::vector<glm::vec2>& [[maybe_unused]] route)
     : Tower(pos, "../PTSD/assets/sprites/images/BarracksTower/TowerLevel1/1.png",
-            0.0f, 10.0f, 0.0f, 70, Enemy::DamageType::PHYSICAL), m_Route(route) {
+            120.0f, 10.0f, 0.0f, 70, Enemy::DamageType::PHYSICAL), m_Route(route) {
 
     // 初始化時將 3 個席位填滿小兵
     for (int i = 0; i < m_MaxSoldiers; ++i) {
@@ -82,6 +82,14 @@ void Barracks::SpawnSoldier(int slotIndex) {
 
 void Barracks::Draw() {
     Tower::Draw(); // 畫塔本身
+    if (m_Visible && m_Drawable) {
+        auto data = Util::ConvertToUniformBufferData(
+            m_Transform,
+            m_Drawable->GetSize(),
+            m_ZIndex
+        );
+        m_Drawable->Draw(data);
+    }
     for (int i = 0; i < m_MaxSoldiers; ++i) {
         if (m_Slots[i].soldier) {
             m_Slots[i].soldier->Draw(); // 畫每個席位的小兵

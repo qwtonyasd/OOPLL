@@ -39,7 +39,7 @@ public:
         SetDrawable(std::make_shared<Util::Image>(imgPath));
 
         // 1. 設定塔本身的層級
-        m_ZIndex = 7.0f;
+        m_ZIndex = 20.0f;
 
         // 2. 初始化範圍指示器 (改用 Image)
         m_RangeIndicatorImage = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/Start/6.png");
@@ -61,12 +61,12 @@ public:
 
                 // 【縮放公式】：射程 / 圖片原始半徑
                 // 假設 6.png 是 200x200 像素，那原始半徑就是 100
-                float originalRadius = 250.0f;
+                float originalRadius = 125.0f;
                 float scale = m_Range / originalRadius;
                 indicatorTransform.scale = {scale, scale};
 
                 auto data = Util::ConvertToUniformBufferData(
-                    indicatorTransform, m_RangeIndicatorImage->GetSize(), 100.0f);
+                    indicatorTransform, m_RangeIndicatorImage->GetSize(), 5.0f);
                 m_RangeIndicatorImage->Draw(data);
             }
 
