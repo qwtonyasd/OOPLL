@@ -16,11 +16,7 @@ void App::Start() {
     m_BuildMenu = std::make_unique<BuildMenu>();
     m_Hud = std::make_unique<Hud>();
 
-    // 1. 初始化勝利選單
     m_VictoryMenu = std::make_unique<VictoryMenu>();
-
-    // 2. 關鍵修正：將選單掛載到場景樹根節點
-    // 這樣星星 (Children) 才能正確繼承 18.png 的渲染上下文與 Z-Index
     m_Root.AddChild(m_VictoryMenu->GetGameObject());
 
     m_IsInGame = false;
@@ -53,35 +49,24 @@ void App::HandleSelectLevel() {
 
 void App::HandleGamePlay() {
     auto& gm = GameManager::GetInstance();
-    // 使用推薦的毫秒單位並轉為秒
     float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
     auto currentMap = m_MapManager->GetCurrentMap();
 
-    // ==========================================
-    // 1. 優先處理勝利選單邏輯 (選單開啟時凍結背景)
-    // ==========================================
+    // 1. 勝利選單邏輯
     if (m_VictoryMenu->IsVisible()) {
         m_VictoryMenu->Update();
-
         if (m_VictoryMenu->IsRestartPressed()) {
             ChangeLevel(m_CurrentLevelID);
-            return; // 立即跳過後續怪物與塔的邏輯
+            return;
         }
-
         if (m_VictoryMenu->IsContinuePressed()) {
             m_IsInGame = false;
             m_VictoryMenu->SetVisible(false, 0);
             m_VictoryMenu->ResetFlags();
-            LOG_INFO("Returning to World Map...");
             return;
         }
-
-        // 如果選單開著，不要執行下方的怪物移動與塔攻擊邏輯
-        // 渲染部分仍會執行，以保持畫面顯示
     } else {
-        // ==========================================
-        // 2. 遊戲核心流程 (出兵與勝負判定)
-        // ==========================================
+        // 2. 遊戲核心流程
         int currentWaveIdx = gm.GetCurrentWave() - 1;
         if (currentWaveIdx < static_cast<int>(m_Waves.size())) {
             auto& currentWave = m_Waves[currentWaveIdx];
@@ -104,20 +89,18 @@ void App::HandleGamePlay() {
                     m_SpawnTimer = 0.0f;
                 }
 
-                // 勝利判定
                 if (static_cast<size_t>(m_SpawnIndex) >= currentWave.enemyList.size() && m_Enemies.empty()) {
                     m_IsWaveActive = false;
                     if (gm.GetCurrentWave() < gm.GetTotalWaves()) {
                         gm.NextWave();
                     } else {
-                        // 根據當前 HP 觸發選單
                         m_VictoryMenu->SetVisible(true, gm.GetHealth());
                     }
                 }
             }
         }
 
-        // 塔與敵人更新
+        // 3. 更新所有塔與移動物
         m_TowerManager->UpdateAll(m_Enemies, m_Projectiles);
 
         for (auto it = m_Projectiles.begin(); it != m_Projectiles.end(); ) {
@@ -139,8 +122,11 @@ void App::HandleGamePlay() {
             }
         }
 
-        // 交互邏輯 (蓋塔選單)
+        // ==========================================
+        // 4. 交互邏輯 (重點修改區塊)
+        // ==========================================
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
+
         if (m_BuildMenu->IsVisible()) {
             Tower::Type selectedType = m_BuildMenu->Update();
             if (selectedType != Tower::Type::NONE) {
@@ -155,39 +141,53 @@ void App::HandleGamePlay() {
                 m_BuildMenu->SetVisible(false);
                 m_SelectedSlot = nullptr;
             } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+                // 點擊 BuildMenu 以外的地方則關閉選單
                 if (glm::distance(mousePos, m_BuildMenu->GetTransform().translation) > 100.0f) {
                     m_BuildMenu->SetVisible(false);
                     m_SelectedSlot = nullptr;
                 }
             }
-        } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-            for (auto& slot : m_TowerSlots) {
-                if (!slot->IsOccupied() && glm::distance(mousePos, slot->GetPosition()) < 50.0f) {
-                    m_SelectedSlot = slot;
-                    m_BuildMenu->SetPosition(slot->GetPosition());
-                    m_BuildMenu->SetVisible(true);
-                    break;
+        }
+        else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+            // A. 優先檢查是否點擊到「已存在的塔」來顯示範圍
+            if (m_TowerManager->HandleClick(mousePos)) {
+                // 如果點到了塔，HandleClick 內部會處理 SetSelected(true)
+                LOG_DEBUG("Tower selected via Mouse Click.");
+            }
+            else {
+                // B. 如果沒點到塔，檢查是否點擊到「空的塔位」
+                bool hitSlot = false;
+                for (auto& slot : m_TowerSlots) {
+                    if (!slot->IsOccupied() && glm::distance(mousePos, slot->GetPosition()) < 50.0f) {
+                        m_SelectedSlot = slot;
+                        m_BuildMenu->SetPosition(slot->GetPosition());
+                        m_BuildMenu->SetVisible(true);
+
+                        // 開啟蓋塔選單時，隱藏其他塔的範圍圈
+                        m_TowerManager->ClearSelection();
+                        hitSlot = true;
+                        break;
+                    }
+                }
+
+                // C. 如果點到純地圖背景（沒點到塔也沒點到塔位）
+                if (!hitSlot) {
+                    m_TowerManager->ClearSelection();
                 }
             }
         }
     }
 
-    // ==========================================
-    // 3. 渲染順序 (依 Z-Order 由後往前)
-    // ==========================================
+    // 5. 渲染順序
     m_MapManager->Draw();
     for (auto& slot : m_TowerSlots) slot->Draw();
-    m_TowerManager->DrawAll();
+    m_TowerManager->DrawAll(); // 這會呼叫各個 Tower 的 Draw()，顯示範圍圈與選單
     for (auto& enemy : m_Enemies) enemy->Draw();
     for (auto& proj : m_Projectiles) proj->Draw();
 
     if (m_BuildMenu->IsVisible()) m_BuildMenu->Draw();
     if (m_Hud) m_Hud->Draw();
-
-    // 勝利選單永遠最後畫，確保層級最前
-    if (m_VictoryMenu->IsVisible()) {
-        m_VictoryMenu->Draw();
-    }
+    if (m_VictoryMenu->IsVisible()) m_VictoryMenu->Draw();
 
     if (Util::Input::IsKeyDown(Util::Keycode::BACKSPACE)) m_IsInGame = false;
 }
@@ -214,14 +214,13 @@ void App::ChangeLevel(int levelId) {
     }
 
     m_BuildMenu->SetVisible(false);
-
-    // 重置選單狀態
     if (m_VictoryMenu) {
         m_VictoryMenu->SetVisible(false, 0);
         m_VictoryMenu->ResetFlags();
     }
 }
 
+// InitWaveData(), End() 等其餘函式保持不變...
 void App::InitWaveData() {
     m_Waves.clear();
     m_Waves.push_back({{Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN}});

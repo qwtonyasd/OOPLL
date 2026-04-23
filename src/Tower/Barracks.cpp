@@ -54,8 +54,23 @@ void Barracks::SpawnSoldier() {
 }
 
 void Barracks::Draw() {
+    // 1. 畫範圍圈與選單 (父類別邏輯)
     Tower::Draw();
-    for (auto& s : m_Soldiers) s->Draw();
+
+    // 2. 畫兵營建築物本身
+    if (m_Visible && m_Drawable) {
+        auto data = Util::ConvertToUniformBufferData(
+            m_Transform,
+            m_Drawable->GetSize(),
+            m_ZIndex
+        );
+        m_Drawable->Draw(data);
+    }
+
+    // 3. 畫士兵們
+    for (auto& s : m_Soldiers) {
+        s->Draw();
+    }
 }
 
 void Barracks::Attack([[maybe_unused]] std::shared_ptr<Enemy> t,

@@ -10,13 +10,18 @@
 #include <memory>
 #include <glm/glm.hpp>
 #include <string>
-#include <limits> // 用於 float 的無限大判斷
-
+#include "Util/TransformUtils.hpp"
+#include "Util/GameObject.hpp"
+#include "Util/Image.hpp"
 class Tower : public Util::GameObject {
 public:
     enum class Type {
         NONE, ARCHER, BARRACKS, MAGE, BOMB
     };
+
+    glm::vec2 GetPosition() const {
+        return m_Transform.translation;
+    }
 
     static int GetBaseCost(Type type) {
         switch (type) {
@@ -33,56 +38,48 @@ public:
         m_Transform.translation = pos;
         SetDrawable(std::make_shared<Util::Image>(imgPath));
 
-        // 1. 修改自己的 ZIndex (繼承自 GameObject，可直接存取)
+        // 1. 設定塔本身的層級
         m_ZIndex = 7.0f;
 
-        // 2. 初始化範圍指示器 (Range Indicator)
-        m_RangeIndicator = std::make_shared<Util::GameObject>();
-        // 注意：請確保路徑下的圖片存在
-        m_RangeIndicator->SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/Start/7.png"));
-        m_RangeIndicator->SetZIndex(5.0f); // 透過 Setter 修改
+        // 2. 初始化範圍指示器 (改用 Image)
+        m_RangeIndicatorImage = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/Start/6.png");
 
-        // 3. 初始化升級選單 (Upgrade Menu)
-        m_UpgradeMenu = std::make_shared<Util::GameObject>();
-        m_UpgradeMenu->SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/UI/upgrade_menu.png"));
-        m_UpgradeMenu->SetZIndex(99.0f); // 透過 Setter 修改
+        // 3. 初始化升級選單 (改用 Image)
+        m_UpgradeMenuImage = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/UI/upgrade_menu.png");
     }
 
     virtual ~Tower() = default;
 
-    // 繪製邏輯
-    virtual void Draw()  {
-        // 1. 如果選取中，先畫範圍圈
-        if (m_IsSelected && m_RangeIndicator) {
-            UpdateRangeIndicator();
-            m_RangeIndicator->Draw();
-        }
+    // 移除 override，因為報錯顯示父類別可能沒有 virtual Draw() 或簽名不符
+    // 我們手動呼叫它來維持本體的繪製
+    virtual void Draw() {
+        if (m_IsSelected) {
+            // --- 畫範圍指示器 ---
+            if (m_RangeIndicatorImage) {
+                Util::Transform indicatorTransform;
+                indicatorTransform.translation = m_Transform.translation;
 
-        // 2. 畫塔本體 (包含視覺偏移)
-        if (m_Drawable) {
-            glm::vec2 originalPos = m_Transform.translation;
-            m_Transform.translation.y += m_VisualOffset;
-            GameObject::Draw();
-            m_Transform.translation = originalPos;
-        }
+                // 【縮放公式】：射程 / 圖片原始半徑
+                // 假設 6.png 是 200x200 像素，那原始半徑就是 100
+                float originalRadius = 250.0f;
+                float scale = m_Range / originalRadius;
+                indicatorTransform.scale = {scale, scale};
 
-        // 3. 如果選取中，最後畫升級選單
-        if (m_IsSelected && m_UpgradeMenu) {
-            // 將選單位置稍微移到塔上方
-            m_UpgradeMenu->m_Transform.translation = m_Transform.translation + glm::vec2(0, 60);
-            m_UpgradeMenu->Draw();
-        }
-    }
+                auto data = Util::ConvertToUniformBufferData(
+                    indicatorTransform, m_RangeIndicatorImage->GetSize(), 100.0f);
+                m_RangeIndicatorImage->Draw(data);
+            }
 
-    // 更新範圍圈的大小與位置
-    void UpdateRangeIndicator() {
-        if (m_RangeIndicator) {
-            m_RangeIndicator->m_Transform.translation = m_Transform.translation;
-            // 假設圖片原始半徑為 125 像素，根據實際 m_Range 進行縮放
-            float textureRadius = 125.0f;
-            float scale = m_Range / textureRadius;
-            m_RangeIndicator->m_Transform.scale = {scale, scale};
+            // --- 畫升級選單 ---
+            if (m_UpgradeMenuImage) {
+                Util::Transform menuTransform;
+                menuTransform.translation = m_Transform.translation + glm::vec2(0, 70);
+                auto data = Util::ConvertToUniformBufferData(
+                    menuTransform, m_UpgradeMenuImage->GetSize(), 101.0f);
+                m_UpgradeMenuImage->Draw(data);
+            }
         }
+        // 注意：這裡不要呼叫 Util::GameObject::Draw()，不然會畫出預設的圖
     }
 
     void SetSelected(bool selected) { m_IsSelected = selected; }
@@ -105,7 +102,6 @@ public:
         }
     }
 
-    // 純虛擬函式，由 ArcherTower, MageTower 等子類別實作
     virtual void Attack(std::shared_ptr<Enemy> target,
                         std::vector<std::shared_ptr<Enemy>>& allEnemies,
                         std::vector<std::shared_ptr<Projectile>>& projectiles) = 0;
@@ -113,24 +109,16 @@ public:
     virtual void UpdateAnimation() {}
 
 protected:
-    // --- 核心邏輯：尋找在射程內且路徑進度最領先的怪 ---
     std::shared_ptr<Enemy> FindTarget(const std::vector<std::shared_ptr<Enemy>>& enemies) {
         std::shared_ptr<Enemy> bestTarget = nullptr;
-        float maxProgress = -1.0f; // 我們要找的是累積距離最大的對象
+        float maxProgress = -1.0f;
 
         for (const auto& enemy : enemies) {
-            // 基本過濾：排除不存在、已死亡、或已到終點的敵人
             if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) continue;
 
-            // 計算塔與敵人間的物理距離
             float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
-
-            // 檢查是否在射程內
             if (dist <= m_Range) {
-                // 取得敵人已走過的總路徑長度
                 float currentProgress = enemy->GetTotalTravelledDistance();
-
-                // 如果這個敵人的進度領先目前所有的候選者，則更新目標
                 if (currentProgress > maxProgress) {
                     maxProgress = currentProgress;
                     bestTarget = enemy;
@@ -147,8 +135,9 @@ protected:
     float m_VisualOffset = 0.0f;
     bool m_IsSelected = false;
 
-    std::shared_ptr<Util::GameObject> m_RangeIndicator;
-    std::shared_ptr<Util::GameObject> m_UpgradeMenu;
+    // 直接儲存 Image 指標，避開 GameObject 的權限限制
+    std::shared_ptr<Util::Image> m_RangeIndicatorImage;
+    std::shared_ptr<Util::Image> m_UpgradeMenuImage;
 };
 
 #endif

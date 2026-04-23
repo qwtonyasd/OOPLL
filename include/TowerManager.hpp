@@ -19,6 +19,31 @@ class TowerManager {
 public:
     TowerManager(Util::GameObject& root) : m_Root(root) {}
 
+    // --- 新增：處理點擊塔的選取邏輯 ---
+    bool HandleClick(const glm::vec2& mousePos) {
+        bool hit = false;
+        // 我們由後往前遍歷，這樣如果塔有重疊，會優先點到最前面的塔
+        for (auto it = m_Towers.rbegin(); it != m_Towers.rend(); ++it) {
+            auto& tower = *it;
+            if (tower->IsMouseHovering(mousePos)) {
+                // 如果點中了這座塔，先清除所有塔的選取，再選中這座
+                ClearSelection();
+                tower->SetSelected(true);
+                hit = true;
+                LOG_INFO("Tower Selected at: ({}, {})", tower->GetPosition().x, tower->GetPosition().y);
+                break;
+            }
+        }
+        return hit;
+    }
+
+    // --- 新增：清除所有塔的選取狀態 (隱藏範圍圈與選單) ---
+    void ClearSelection() {
+        for (auto& tower : m_Towers) {
+            tower->SetSelected(false);
+        }
+    }
+
     void AddTower(Tower::Type type, glm::vec2 pos, const std::vector<glm::vec2>& route) {
         std::shared_ptr<Tower> newTower = nullptr;
 
@@ -47,17 +72,10 @@ public:
         }
     }
 
-    /**
-     * @brief 更新所有塔的邏輯與動畫
-     */
     void UpdateAll(std::vector<std::shared_ptr<Enemy>>& enemies,
                    std::vector<std::shared_ptr<Projectile>>& projectiles) {
         for (auto& tower : m_Towers) {
-            // 1. 執行原本的攻擊邏輯（偵測敵人、冷卻計時、產生子彈）
             tower->Update(enemies, projectiles);
-
-            // 2. 新增：執行塔的動畫更新（處理圖片切換）
-            // 只要是在子類別有實作 UpdateAnimation 的塔，都會在這裡動起來
             tower->UpdateAnimation();
         }
     }

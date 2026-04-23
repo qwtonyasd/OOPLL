@@ -13,7 +13,6 @@ ArcherTower::ArcherTower(glm::vec2 pos)
     // 1. 載入底座
     m_BaseDrawable = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/2.png");
 
-    // 2. 載入動畫幀路徑
     m_AttackFramesRight.clear();
     for (int i = 3; i <= 7; ++i) m_AttackFramesRight.push_back("../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/" + std::to_string(i) + ".png");
     m_AttackFramesLeft.clear();
@@ -106,13 +105,19 @@ void ArcherTower::FireArrow(glm::vec2 offset) {
 }
 
 void ArcherTower::Draw() {
+    // --- 新增：先跑父類別邏輯 (畫範圍圈與選單) ---
+    Tower::Draw();
+
     // 備份原始座標
     glm::vec2 originalPos = m_Transform.translation;
     float originalZ = m_ZIndex;
 
-    // 1. 畫底座 (位於中心)
+    // ... 接下來是你原本畫底座與小人的代碼 ...
+    // 1. 畫底座
     if (m_BaseDrawable) {
         m_Drawable = m_BaseDrawable;
+        // 注意：因為 PTSD 框架的 GameObject::Draw() 只會畫目前 m_Drawable 指定的東西
+        // 所以這裡維持呼叫 Util::GameObject::Draw() 是對的
         Util::GameObject::Draw();
     }
 

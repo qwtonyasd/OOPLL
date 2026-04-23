@@ -62,3 +62,17 @@ void MageTower::UpdateAnimation() {
         m_IsAttacking = false;
     }
 }
+void MageTower::Draw() {
+    // 1. 先呼叫父類別 Tower 的 Draw
+    Tower::Draw();
+
+    // 2. 畫魔法塔自己
+    if (m_Visible && m_Drawable) {
+        auto data = Util::ConvertToUniformBufferData(
+            m_Transform,
+            m_Drawable->GetSize(),
+            m_ZIndex
+        );
+        m_Drawable->Draw(data);
+    }
+}
