@@ -1,5 +1,5 @@
 #include "Enemy.hpp"
-#include "Soldier.hpp" // 必須包含以呼叫 TakeDamage
+#include "Soldier.hpp"
 #include "Util/Time.hpp"
 
 Enemy::Enemy(Enemy::Type type, const std::vector<glm::vec2>& path, float speed, float hp,
@@ -30,22 +30,18 @@ void Enemy::Update() {
     if (m_IsBlocked) {
         SetState(State::ATTACK);
 
-        // --- 核心反擊邏輯 ---
         if (m_TargetSoldier && m_TargetSoldier->GetHP() > 0) {
             m_AttackTimer += dt;
             if (m_AttackTimer >= m_AttackCooldown) {
-                // 根據怪物種類設定傷害：哥布林 5, 獸人 12
                 float dmg = (m_Type == Type::GOBLIN) ? 5.0f : 12.0f;
                 m_TargetSoldier->TakeDamage(dmg);
-                m_AttackTimer = 0.0f; // 重置攻擊冷卻
+                m_AttackTimer = 0.0f;
             }
         } else {
-            // 如果士兵死了，恢復移動
             SetBlocked(false, nullptr);
         }
     }
 
-    // 如果沒被擋住，執行路徑移動
     if (!m_IsBlocked) {
         if (m_CurrentNodeIdx < m_Path.size()) {
             glm::vec2 oldPos = m_Transform.translation;
@@ -60,6 +56,16 @@ void Enemy::Update() {
             m_HP = 0;
         }
     }
+}
+
+// --- 修正後的 Draw 函式 ---
+void Enemy::Draw() {
+    if (m_HP <= 0 && IsDeadAnimationFinished()) return;
+
+    // 1. 呼叫基底類別的 Draw 來繪製怪物本體動畫
+    GameObject::Draw();
+
+    DrawHealthBar();
 }
 
 void Enemy::TakeDamage(float damage, DamageType damageType) {
@@ -86,7 +92,7 @@ void Enemy::UpdateDirection(glm::vec2 dir) {
 void Enemy::SetState(State newState) {
     if (m_CurrentState == newState) return;
     m_CurrentState = newState;
-    m_AttackTimer = 0.0f; // 切換狀態時重置攻擊計時
+    m_AttackTimer = 0.0f;
     switch (m_CurrentState) {
         case State::MOVE_RIGHT: SetDrawable(m_MoveRightAni); break;
         case State::MOVE_UP:    SetDrawable(m_MoveUpAni);    break;
