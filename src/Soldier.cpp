@@ -19,18 +19,25 @@ Soldier::Soldier(glm::vec2 spawnPos, glm::vec2 rallyPoint, float speed, float hp
     m_HP = hp;
     m_MaxHP = hp;
     m_Transform.translation = spawnPos;
+
+    // 確保 ZIndex 高於地圖，低於血條
     m_ZIndex = 15.0f;
+
     m_AnimTimer = 0.0f;
     m_AttackTimer = 0.0f;
     m_TurnTimer = 0.0f;
     m_NextTurnTime = dis(gen);
+
+    // 修改處：縮小偵測範圍 (原本 120.0f，現在改為 80.0f)
+    m_DetectionRange = 80.0f;
+
     SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/BarracksTower/Soldier/1.png"));
     SetState(Soldier::State::MOVE_TO_RALLY);
 }
 
 void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies) {
     float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
-    if (dt > 0.1f) dt = 0.016f; // 防止跳幀過大
+    if (dt > 0.1f) dt = 0.016f;
 
     if (m_HP <= 0) {
         if (m_CurrentState != State::DEATH) {
@@ -62,7 +69,8 @@ void Soldier::Draw() {
     // 1. 繪製士兵動畫本體
     GameObject::Draw();
 
-    // 2. 繪製血條 (呼叫 Unit 基底類別的函式)
+    // 2. 修改處：移除參數，統一使用 Unit.hpp 中的 yOffset 預設值
+    // 這樣你在 Unit.hpp 修改 yOffset 才會真正生效
     DrawHealthBar();
 }
 
@@ -78,7 +86,6 @@ bool Soldier::IsAvailable() const {
 }
 
 void Soldier::ChaseEnemy(float dt) {
-    // 檢查目標是否消失或已死亡，或是已經抵達終點
     if (!m_TargetEnemy || m_TargetEnemy->GetHP() <= 0 || m_TargetEnemy->ReachedEnd()) {
         m_TargetEnemy = nullptr;
         SetState(State::MOVE_TO_RALLY);
@@ -91,7 +98,6 @@ void Soldier::ChaseEnemy(float dt) {
         m_Transform.translation += dir * m_Speed * (dt * 60.0f);
         m_Transform.scale.x = (dir.x > 0) ? 1.0f : -1.0f;
     } else {
-        // 進入近戰距離，攔截敵人
         m_TargetEnemy->SetBlocked(true, shared_from_this());
         SetState(State::BLOCKING);
     }
@@ -104,7 +110,6 @@ void Soldier::PerformAttack(float dt) {
         return;
     }
 
-    // 面向目標
     m_Transform.scale.x = (m_TargetEnemy->GetPosition().x > m_Transform.translation.x) ? 1.0f : -1.0f;
 
     m_AttackTimer += dt;
@@ -177,7 +182,7 @@ void Soldier::UpdateIdleRotation(float dt) {
     m_TurnTimer += dt;
     if (m_TurnTimer >= m_NextTurnTime) {
         m_TurnTimer = 0.0f;
-        m_Transform.scale.x *= -1.0f; // 隨機左右看
+        m_Transform.scale.x *= -1.0f;
         m_NextTurnTime = dis(gen);
     }
 }
@@ -193,23 +198,39 @@ void Soldier::ReleaseEnemy() {
     m_TargetEnemy = nullptr;
 }
 
-// 實作：搜尋範圍內的敵人並進行攔截
+// 修改處：實現「優先攔截新敵人」的搜尋邏輯
 void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
-    std::shared_ptr<Enemy> closestEnemy = nullptr;
+    std::shared_ptr<Enemy> bestTarget = nullptr;
     float minDistance = m_DetectionRange;
 
+    // 第一階段：搜尋「未被阻擋」的敵人
     for (auto& enemy : enemies) {
-        // 檢查敵人是否有效（未死、未抵達終點、且未被其他士兵阻擋）
         if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) continue;
 
-        float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
-        if (dist < minDistance) {
-            minDistance = dist;
-            closestEnemy = enemy;
+        if (!enemy->IsBlocked()) {
+            float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
+            if (dist < minDistance) {
+                minDistance = dist;
+                bestTarget = enemy;
+            }
         }
     }
 
-    if (closestEnemy) {
-        EngageTarget(closestEnemy);
+    // 第二階段：如果全都被擋住了，再去找最近的幫忙圍毆
+    if (!bestTarget) {
+        minDistance = m_DetectionRange;
+        for (auto& enemy : enemies) {
+            if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) continue;
+
+            float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
+            if (dist < minDistance) {
+                minDistance = dist;
+                bestTarget = enemy;
+            }
+        }
+    }
+
+    if (bestTarget) {
+        EngageTarget(bestTarget);
     }
 }

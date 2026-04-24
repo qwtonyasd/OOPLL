@@ -64,7 +64,6 @@ void Enemy::Draw() {
 
     // 1. 呼叫基底類別的 Draw 來繪製怪物本體動畫
     GameObject::Draw();
-
     DrawHealthBar();
 }
 

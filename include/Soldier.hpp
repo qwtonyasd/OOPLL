@@ -47,8 +47,8 @@ private:
     float m_TurnTimer = 0.0f;
     float m_NextTurnTime = 0.0f;
 
-    float m_DetectionRange = 10.0f;
-    float m_MeleeRange = 10.0f;
+    float m_DetectionRange = 80.0f;
+    float m_MeleeRange = 20.0f;
 };
 
 #endif
