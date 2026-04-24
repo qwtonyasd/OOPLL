@@ -4,7 +4,6 @@
 #include "Util/Image.hpp"
 #include <random>
 
-// 動畫幀索引定義
 const int WALK_START = 1, WALK_END = 6;
 const int ATK_START = 7,  ATK_END = 17;
 const int DEAD_START = 18, DEAD_END = 24;
@@ -19,16 +18,11 @@ Soldier::Soldier(glm::vec2 spawnPos, glm::vec2 rallyPoint, float speed, float hp
     m_HP = hp;
     m_MaxHP = hp;
     m_Transform.translation = spawnPos;
-
-    // 確保 ZIndex 高於地圖，低於血條
     m_ZIndex = 15.0f;
-
     m_AnimTimer = 0.0f;
     m_AttackTimer = 0.0f;
     m_TurnTimer = 0.0f;
     m_NextTurnTime = dis(gen);
-
-    // 修改處：縮小偵測範圍 (原本 120.0f，現在改為 80.0f)
     m_DetectionRange = 80.0f;
 
     SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/BarracksTower/Soldier/1.png"));
@@ -41,14 +35,14 @@ void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies) {
 
     if (m_HP <= 0) {
         if (m_CurrentState != State::DEATH) {
-            SetState(State::DEATH);
             ReleaseEnemy();
+            SetState(State::DEATH);
         }
         UpdateAnimation(dt);
         return;
     }
 
-    // 當士兵處於閒置或移動到集結點時，主動搜尋敵人
+    // 只有在閒置或移動回集結點時，才去尋找新目標
     if (m_CurrentState == State::IDLE || m_CurrentState == State::MOVE_TO_RALLY) {
         SearchForEnemy(enemies);
     }
@@ -65,12 +59,7 @@ void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies) {
 
 void Soldier::Draw() {
     if (m_HP <= 0 && m_IsDeadAnimDone) return;
-
-    // 1. 繪製士兵動畫本體
     GameObject::Draw();
-
-    // 2. 修改處：移除參數，統一使用 Unit.hpp 中的 yOffset 預設值
-    // 這樣你在 Unit.hpp 修改 yOffset 才會真正生效
     DrawHealthBar();
 }
 
@@ -93,21 +82,32 @@ void Soldier::ChaseEnemy(float dt) {
     }
 
     float dist = glm::distance(m_Transform.translation, m_TargetEnemy->GetPosition());
+
+    // 關鍵修正：只有在走到了近戰範圍內，才讓怪物停下 (SetBlocked)
     if (dist > m_MeleeRange) {
         glm::vec2 dir = glm::normalize(m_TargetEnemy->GetPosition() - m_Transform.translation);
         m_Transform.translation += dir * m_Speed * (dt * 60.0f);
         m_Transform.scale.x = (dir.x > 0) ? 1.0f : -1.0f;
     } else {
-        m_TargetEnemy->SetBlocked(true, shared_from_this());
+        // 走到了！現在才正式「攔截」怪物
+        if (!m_TargetEnemy->IsBlocked()) {
+            m_TargetEnemy->SetBlocked(true, shared_from_this());
+        }
         SetState(State::BLOCKING);
     }
 }
 
 void Soldier::PerformAttack(float dt) {
-    if (!m_TargetEnemy || m_TargetEnemy->GetHP() <= 0) {
-        ReleaseEnemy();
+    if (!m_TargetEnemy || m_TargetEnemy->GetHP() <= 0 || m_TargetEnemy->ReachedEnd()) {
+        m_TargetEnemy = nullptr;
         SetState(State::MOVE_TO_RALLY);
         return;
+    }
+
+    // 如果攔截者（主要擋路的人）死了，怪物會變回 !IsBlocked
+    // 這時候還活著的支援者需要立刻「補位」變成攔截者，否則怪物會走掉
+    if (!m_TargetEnemy->IsBlocked()) {
+        m_TargetEnemy->SetBlocked(true, shared_from_this());
     }
 
     m_Transform.scale.x = (m_TargetEnemy->GetPosition().x > m_Transform.translation.x) ? 1.0f : -1.0f;
@@ -198,15 +198,13 @@ void Soldier::ReleaseEnemy() {
     m_TargetEnemy = nullptr;
 }
 
-// 修改處：實現「優先攔截新敵人」的搜尋邏輯
 void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
     std::shared_ptr<Enemy> bestTarget = nullptr;
     float minDistance = m_DetectionRange;
 
-    // 第一階段：搜尋「未被阻擋」的敵人
+    // 階段 1：找沒人擋的怪
     for (auto& enemy : enemies) {
         if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) continue;
-
         if (!enemy->IsBlocked()) {
             float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
             if (dist < minDistance) {
@@ -216,12 +214,11 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
         }
     }
 
-    // 第二階段：如果全都被擋住了，再去找最近的幫忙圍毆
+    // 階段 2：沒自由怪才找圍毆目標
     if (!bestTarget) {
         minDistance = m_DetectionRange;
         for (auto& enemy : enemies) {
             if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) continue;
-
             float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
             if (dist < minDistance) {
                 minDistance = dist;
@@ -231,6 +228,6 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
     }
 
     if (bestTarget) {
-        EngageTarget(bestTarget);
+        EngageTarget(bestTarget); // 這裡不再調用 SetBlocked，讓 ChaseEnemy 走到目的地後再攔截
     }
 }
