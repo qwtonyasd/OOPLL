@@ -63,16 +63,23 @@ void MageTower::UpdateAnimation() {
     }
 }
 void MageTower::Draw() {
-    // 1. 先呼叫父類別 Tower 的 Draw
-    Tower::Draw();
+    Tower::Draw(); // 畫圈圈
 
-    // 2. 畫魔法塔自己
     if (m_Visible && m_Drawable) {
+        // 備份原始座標
+        glm::vec2 originalPos = m_Transform.translation;
+
+        // --- 調整這裡的數值 (例如 +10 或 +20)，直到位置看起來正確 ---
+        m_Transform.translation.y += 10.0f;
+
         auto data = Util::ConvertToUniformBufferData(
             m_Transform,
             m_Drawable->GetSize(),
             m_ZIndex
         );
         m_Drawable->Draw(data);
+
+        // 畫完後還原座標，避免影響碰撞偵測或射程計算
+        m_Transform.translation = originalPos;
     }
 }

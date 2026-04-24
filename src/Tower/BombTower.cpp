@@ -18,9 +18,7 @@ BombTower::BombTower(glm::vec2 pos)
     }
 }
 
-/**
- * @brief 啟動攻擊動畫並鎖定目標
- */
+
 void BombTower::Attack(std::shared_ptr<Enemy> target,
                       std::vector<std::shared_ptr<Enemy>>& allEnemies,
                       std::vector<std::shared_ptr<Projectile>>& projectiles) {
@@ -39,7 +37,7 @@ void BombTower::Attack(std::shared_ptr<Enemy> target,
 }
 
 /**
- * @brief 更新每一幀的動畫與發射邏輯
+ 更新每一幀的動畫與發射邏輯
  */
 void BombTower::UpdateAnimation() {
     if (!m_IsAttacking) return;
@@ -91,7 +89,7 @@ void BombTower::Draw() {
         glm::vec2 originalPos = m_Transform.translation;
 
         // --- 調整這裡的數值 (例如 +10 或 +20)，直到位置看起來正確 ---
-        m_Transform.translation.y += 15.0f;
+        m_Transform.translation.y += 20.0f;
 
         auto data = Util::ConvertToUniformBufferData(
             m_Transform,
