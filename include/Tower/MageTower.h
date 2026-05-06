@@ -2,7 +2,7 @@
 #define MAGE_TOWER_H
 
 #include "Tower.hpp"
-#include "MagicBolt.hpp"
+#include "Tower/Projectlie/MagicBolt.hpp"
 #include <vector>
 #include <string>
 

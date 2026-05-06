@@ -11,7 +11,7 @@
 #include "WorldMap.hpp"
 #include "TowerSlot.hpp"
 #include "Enemy.hpp"
-#include "Projectile.hpp"
+#include "Tower/Projectlie/Projectile.hpp"
 #include "VictoryMenu.hpp" // 1. 補上勝利選單標頭檔
 
 class App {

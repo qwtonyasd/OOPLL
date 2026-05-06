@@ -1,7 +1,7 @@
 #ifndef BOMB_HPP
 #define BOMB_HPP
 
-#include "Projectile.hpp"
+#include "Tower/Projectlie/Projectile.hpp"
 #include "Util/Image.hpp"
 #include "Util/Time.hpp"
 #include <glm/gtc/constants.hpp>

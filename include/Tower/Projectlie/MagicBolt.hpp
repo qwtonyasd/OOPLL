@@ -1,7 +1,7 @@
 #ifndef MAGICBOLT_HPP
 #define MAGICBOLT_HPP
 
-#include "Projectile.hpp"
+#include "Tower/Projectlie/Projectile.hpp"
 #include "Util/Image.hpp"
 #include "Util/Time.hpp"
 #include "Util/Logger.hpp"

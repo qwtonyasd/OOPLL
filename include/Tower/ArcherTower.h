@@ -2,7 +2,7 @@
 #define ARCHER_TOWER_H
 
 #include "Tower.hpp"
-#include "Arrow.hpp"
+#include "Tower/Projectlie/Arrow.hpp"
 #include "Util/Image.hpp"
 #include "Core/Drawable.hpp" // 必須包含這個
 #include <vector>

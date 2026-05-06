@@ -2,7 +2,7 @@
 #define BOMB_TOWER_H
 
 #include "Tower.hpp"
-#include "Bomb.hpp"
+#include "Tower/Projectlie/Bomb.hpp"
 #include <vector>
 #include <string>
 #include <memory> // 確保有包含這個

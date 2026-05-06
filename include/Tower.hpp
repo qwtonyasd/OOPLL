@@ -5,7 +5,7 @@
 #include "Util/Image.hpp"
 #include "Util/Time.hpp"
 #include "Enemy.hpp"
-#include "Projectile.hpp"
+#include "Tower/Projectlie/Projectile.hpp"
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>
@@ -39,13 +39,16 @@ public:
         SetDrawable(std::make_shared<Util::Image>(imgPath));
 
         // 1. 設定塔本身的層級
-        m_ZIndex = 20.0f;
+        m_ZIndex = 15.0f;
 
         // 2. 初始化範圍指示器 (改用 Image)
         m_RangeIndicatorImage = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/Start/6.png");
 
         // 3. 初始化升級選單 (改用 Image)
-        m_UpgradeMenuImage = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/UI/upgrade_menu.png");
+        m_UpgradeMenuImage = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/Start/2.png");
+        if (m_UpgradeMenuImage->GetSize().x == 0) {
+            LOG_DEBUG("Failed to load Upgrade Menu Image! Check path.");
+        }
     }
 
     virtual ~Tower() = default;
@@ -54,32 +57,41 @@ public:
     // 我們手動呼叫它來維持本體的繪製
     virtual void Draw() {
         if (m_IsSelected) {
-            // --- 畫範圍指示器 ---
+            // --- 1. 繪製範圍指示器 (藍圈) ---
+            // 這個縮放是正確的，因為範圍圈必須跟隨 m_Range
             if (m_RangeIndicatorImage) {
                 Util::Transform indicatorTransform;
                 indicatorTransform.translation = m_Transform.translation;
 
-                // 【縮放公式】：射程 / 圖片原始半徑
-                // 假設 6.png 是 200x200 像素，那原始半徑就是 100
                 float originalRadius = 125.0f;
                 float scale = m_Range / originalRadius;
-                indicatorTransform.scale = {scale, scale};
+                indicatorTransform.scale = {scale, scale}; // 這裡會變動
 
-                auto data = Util::ConvertToUniformBufferData(
-                    indicatorTransform, m_RangeIndicatorImage->GetSize(), 5.0f);
-                m_RangeIndicatorImage->Draw(data);
+                auto indicatorData = Util::ConvertToUniformBufferData(
+                    indicatorTransform,
+                    m_RangeIndicatorImage->GetSize(),
+                    5.0f // 最底層
+                );
+                m_RangeIndicatorImage->Draw(indicatorData);
             }
 
-            // --- 畫升級選單 ---
+            // --- 2. 繪製升級選單 (UI 圓環) ---
+            // 注意：這裡必須使用獨立的 Transform 且 scale 設為固定值
             if (m_UpgradeMenuImage) {
                 Util::Transform menuTransform;
-                menuTransform.translation = m_Transform.translation + glm::vec2(0, 70);
-                auto data = Util::ConvertToUniformBufferData(
-                    menuTransform, m_UpgradeMenuImage->GetSize(), 101.0f);
-                m_UpgradeMenuImage->Draw(data);
+                menuTransform.translation = m_Transform.translation + glm::vec2(0.0f, 5.0f);;
+
+                // 強制設為 1.0f，不使用任何與 m_Range 相關的變數
+                menuTransform.scale = {1.1, 1.1f};
+
+                auto menuData = Util::ConvertToUniformBufferData(
+                    menuTransform,
+                    m_UpgradeMenuImage->GetSize(),
+                    16.0f // 提高 ZIndex 確保在最前方
+                );
+                m_UpgradeMenuImage->Draw(menuData);
             }
         }
-        // 注意：這裡不要呼叫 Util::GameObject::Draw()，不然會畫出預設的圖
     }
 
     void SetSelected(bool selected) { m_IsSelected = selected; }
