@@ -1,104 +1,89 @@
 #include "tower/BombTower.h"
 #include "Util/Time.hpp"
+#include "Tower/Projectlie/Projectile.hpp"
 
-/**
- * @brief BombTower 建構子
- * @param pos 塔放置的座標
- */
 BombTower::BombTower(glm::vec2 pos)
     : Tower(pos, "../PTSD/assets/sprites/images/BombTower/TowerLevel1/1.png",
-            100.0f, 2.5f, 11.0f, 150, Enemy::DamageType::PHYSICAL) {
+            150.0f, 2.5f, 11.0f, 150, Enemy::DamageType::PHYSICAL) {
 
-    // 保留你原本要求的視覺位移量
     m_VisualOffset = 10.0f;
 
-    // 載入 1 到 35 張攻擊動畫路徑
     for (int i = 1; i <= 35; ++i) {
         m_AttackFrames.push_back("../PTSD/assets/sprites/images/BombTower/TowerLevel1/" + std::to_string(i) + ".png");
     }
 }
 
-
 void BombTower::Attack(std::shared_ptr<Enemy> target,
                       std::vector<std::shared_ptr<Enemy>>& allEnemies,
                       std::vector<std::shared_ptr<Projectile>>& projectiles) {
-
-    // 進入攻擊狀態
     m_IsAttacking = true;
     m_HasFired = false;
-
-    // 紀錄當前時間作為動畫起點
     m_AttackStartTime = static_cast<float>(Util::Time::GetElapsedTimeMs()) / 1000.0f;
 
-    // 暫存目標與容器指標，供 UpdateAnimation 使用
     m_CurrentTarget = target;
     m_AllEnemiesRef = &allEnemies;
     m_ProjectilesRef = &projectiles;
 }
 
-/**
- 更新每一幀的動畫與發射邏輯
- */
 void BombTower::UpdateAnimation() {
     if (!m_IsAttacking) return;
 
     float currentTime = static_cast<float>(Util::Time::GetElapsedTimeMs()) / 1000.0f;
     float elapsed = currentTime - m_AttackStartTime;
-
-    // 設定動畫播放速率 (0.04s 一幀)
     int frameIndex = static_cast<int>(elapsed / 0.04f);
 
     if (frameIndex < static_cast<int>(m_AttackFrames.size())) {
-        // 切換圖片
         SetDrawable(std::make_shared<Util::Image>(m_AttackFrames[frameIndex]));
 
-        // --- 核心邏輯：在第 10 幀發射子彈 ---
+        // --- 核心修正：發射萬用投射物 ---
         if (frameIndex == 10 && !m_HasFired) {
             if (m_CurrentTarget && m_ProjectilesRef && m_AllEnemiesRef) {
 
-                // 1. 計算子彈起點：從塔的中心向上偏移 35 像素
-                glm::vec2 firePos = m_Transform.translation;
-                firePos.y += 35.0f;
+                glm::vec2 firePos = m_Transform.translation + glm::vec2(0, 35.0f);
 
-                // 2. 產生 Bomb 物件：直接傳入 m_CurrentTarget 實現動態追蹤
-                auto bomb = std::make_shared<Bomb>(
+                // 準備爆炸特效路徑 (D 類)
+                std::vector<std::string> explosionFrames;
+                for (int i = 1; i <= 21; ++i) {
+                    explosionFrames.push_back("../PTSD/assets/sprites/images/BombTower/bomb/" + std::to_string(i) + ".png");
+                }
+
+                // 建立 Projectile：B類移動 + D類命中
+                auto bomb = std::make_shared<Projectile>(
+                    Projectile::MoveType::PARABOLA_SIMPLE, // B 類：簡單拋物線，不旋轉
+                    Projectile::HitType::AREA,             // D 類：範圍爆炸傷害
                     firePos,
-                    m_CurrentTarget, // 讓子彈在飛行中追蹤這個敵人
+                    m_CurrentTarget,
                     m_Damage,
-                    *m_AllEnemiesRef,
-                    m_DamageType
+                    0.8f,  // 飛行時間
+                    80.0f, // 拋物線高度
+                    "../PTSD/assets/sprites/images/BombTower/bomb/1.png", // 初始炸彈圖
+                    explosionFrames,
+                    m_AllEnemiesRef // 傳入敵人清單指標以計算 AOE
                 );
 
-                // 3. 加入子彈容器
                 m_ProjectilesRef->push_back(bomb);
-                m_HasFired = true; // 確保此輪動畫只發射一顆炸彈
+                m_HasFired = true;
             }
         }
     } else {
-        // 動畫結束，換回第一張圖並解除攻擊狀態
         SetDrawable(std::make_shared<Util::Image>(m_AttackFrames[0]));
         m_IsAttacking = false;
     }
 }
 
 void BombTower::Draw() {
-    Tower::Draw(); // 畫圈圈
-
+    Tower::Draw();
     if (m_Visible && m_Drawable) {
-        // 備份原始座標
         glm::vec2 originalPos = m_Transform.translation;
+        m_Transform.translation.y += 20.0f; // 視覺修正
 
-        // --- 調整這裡的數值 (例如 +10 或 +20)，直到位置看起來正確 ---
-        m_Transform.translation.y += 20.0f;
-
-        auto data = Util::ConvertToUniformBufferData(
-            m_Transform,
-            m_Drawable->GetSize(),
-            m_ZIndex
-        );
+        auto data = Util::ConvertToUniformBufferData(m_Transform, m_Drawable->GetSize(), m_ZIndex);
         m_Drawable->Draw(data);
 
-        // 畫完後還原座標，避免影響碰撞偵測或射程計算
         m_Transform.translation = originalPos;
     }
+}
+
+void BombTower::Upgrade() {
+    // 留空即可，目的是滿足編譯器的要求
 }

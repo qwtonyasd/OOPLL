@@ -9,16 +9,24 @@
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>
+#include "Util/Logger.hpp"
 #include <string>
 #include "Util/TransformUtils.hpp"
 #include "Util/GameObject.hpp"
 #include "Util/Image.hpp"
 class Tower : public Util::GameObject {
 public:
+    struct TowerStats {
+        float range;
+        float attackInterval;
+        float damage;
+        int upgradeCost;
+        std::string baseSpritePath; // 所有的塔都有基座
+    };
     enum class Type {
         NONE, ARCHER, BARRACKS, MAGE, BOMB
     };
-
+    virtual void Upgrade() = 0;
     glm::vec2 GetPosition() const {
         return m_Transform.translation;
     }
@@ -121,6 +129,17 @@ public:
     virtual void UpdateAnimation() {}
 
 protected:
+    int m_Level = 1;
+    const int m_MaxLevel = 3;
+
+    // 通用數值應用：由子類別呼叫
+    void ApplyBaseStats(const TowerStats& stats) {
+        m_Range = stats.range;
+        m_Cooldown = stats.attackInterval; // 對應你原本的 m_Cooldown
+        m_Damage = stats.damage;
+        m_Cost = stats.upgradeCost;
+        SetDrawable(std::make_shared<Util::Image>(stats.baseSpritePath));
+    }
     std::shared_ptr<Enemy> FindTarget(const std::vector<std::shared_ptr<Enemy>>& enemies) {
         std::shared_ptr<Enemy> bestTarget = nullptr;
         float maxProgress = -1.0f;

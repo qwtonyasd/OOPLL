@@ -3,40 +3,113 @@
 
 #include "Util/GameObject.hpp"
 #include "Util/Time.hpp"
+#include "Util/Image.hpp"
 #include "Enemy.hpp"
-#include <memory>
 #include <glm/glm.hpp>
-#include "Util/Logger.hpp"
+#include <glm/gtc/constants.hpp>
+#include <vector>
+#include <string>
+#include <memory>
+#include <algorithm>
 
 class Projectile : public Util::GameObject {
 public:
-    // 確保這裡有 4 個參數
-    Projectile(glm::vec2 startPos, std::shared_ptr<Enemy> target, float damage, Enemy::DamageType damageType)
-        : m_Target(target), m_Damage(damage), m_DamageType(damageType) {
-        m_Transform.translation = startPos;
-        m_ZIndex = 50.0f;
+    enum class MoveType {
+        PARABOLA_ROTATE, // A類：拋物線 + 旋轉 (箭矢)
+        PARABOLA_SIMPLE, // B類: 純拋物線 (炸彈)
+        STRAIGHT         // C類: 直線 (魔法彈)
+    };
+
+    enum class HitType {
+        SINGLE,          // E類: 單體
+        AREA             // D類: 範圍 (AOE)
+    };
+
+    Projectile(MoveType move, HitType hit, glm::vec2 start, std::shared_ptr<Enemy> target,
+               float damage, float duration, float arcHeight,
+               const std::string& spritePath, const std::vector<std::string>& hitFrames,
+               std::vector<std::shared_ptr<Enemy>>* allEnemies = nullptr)
+        : m_MoveType(move), m_HitType(hit), m_StartPos(start), m_Target(target),
+          m_AllEnemies(allEnemies), m_Damage(damage), m_FlightDuration(duration),
+          m_MaxArcHeight(arcHeight), m_HitFrames(hitFrames) { // 按照宣告順序初始化
+
+        m_Transform.translation = start;
+        m_ZIndex = 100.0f;
+        SetDrawable(std::make_shared<Util::Image>(spritePath));
+        if (m_Target) m_FinalLandPos = m_Target->GetPosition();
     }
 
-    virtual ~Projectile() = default;
-    virtual void Update() = 0;
+    void Update() {
+        if (!m_IsActive) return;
+        float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
+
+        if (m_IsHitting) {
+            UpdateHitAnimation(dt);
+        } else {
+            UpdateFlight(dt);
+        }
+    }
+
     bool IsActive() const { return m_IsActive; }
 
-    // 移除 override，因為 GameObject::Draw 可能是最上層
-    virtual void Draw() {
-        if (!m_IsActive) return;
-        GameObject::Draw();
+private:
+    void UpdateFlight(float dt) {
+        m_ElapsedTime += dt;
+        float progress = std::clamp(m_ElapsedTime / m_FlightDuration, 0.0f, 1.0f);
+
+        if (m_Target && m_Target->GetHP() > 0) m_FinalLandPos = m_Target->GetPosition();
+
+        glm::vec2 oldPos = m_Transform.translation;
+        glm::vec2 currentGroundPos = glm::mix(m_StartPos, m_FinalLandPos, progress);
+
+        float height = 0.0f;
+        if (m_MoveType != MoveType::STRAIGHT) {
+            height = m_MaxArcHeight * std::sin(progress * glm::pi<float>());
+        }
+
+        m_Transform.translation = currentGroundPos;
+        m_Transform.translation.y += height;
+
+        if (m_MoveType == MoveType::PARABOLA_ROTATE) {
+            glm::vec2 dir = m_Transform.translation - oldPos;
+            if (glm::length(dir) > 0.0001f) m_Transform.rotation = std::atan2(dir.y, dir.x);
+        }
+
+        if (progress >= 1.0f) HandleImpact();
     }
 
-protected:
+    void HandleImpact() {
+        m_IsHitting = true;
+        m_Transform.rotation = 0.0f;
+
+        if (m_HitType == HitType::AREA && m_AllEnemies) {
+            for (auto& enemy : *m_AllEnemies) {
+                if (enemy && glm::distance(m_Transform.translation, enemy->GetPosition()) < 50.0f) {
+                    enemy->TakeDamage(m_Damage, Enemy::DamageType::PHYSICAL);
+                }
+            }
+        } else if (m_Target && m_Target->GetHP() > 0) {
+            m_Target->TakeDamage(m_Damage, Enemy::DamageType::PHYSICAL);
+        }
+    }
+
+    void UpdateHitAnimation(float dt) {
+        m_HitTimer += dt;
+        size_t frame = static_cast<size_t>(m_HitTimer / 0.05f);
+        if (frame < m_HitFrames.size()) {
+            SetDrawable(std::make_shared<Util::Image>(m_HitFrames[frame]));
+        } else {
+            m_IsActive = false;
+        }
+    }
+
+    MoveType m_MoveType; HitType m_HitType;
+    glm::vec2 m_StartPos; glm::vec2 m_FinalLandPos;
     std::shared_ptr<Enemy> m_Target;
-    float m_Damage;
-    Enemy::DamageType m_DamageType;
-    float m_Speed = 600.0f;
-    bool m_IsActive = true;
-
-    float DeltaTime() const {
-        return static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
-    }
+    std::vector<std::shared_ptr<Enemy>>* m_AllEnemies;
+    float m_Damage; float m_ElapsedTime = 0.0f;
+    float m_FlightDuration; float m_MaxArcHeight;
+    bool m_IsActive = true; bool m_IsHitting = false;
+    float m_HitTimer = 0.0f; std::vector<std::string> m_HitFrames;
 };
-
 #endif

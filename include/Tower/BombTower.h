@@ -2,13 +2,14 @@
 #define BOMB_TOWER_H
 
 #include "Tower.hpp"
-#include "Tower/Projectlie/Bomb.hpp"
+#include "Tower/Projectlie/Projectile.hpp" // 修改：改用萬用投射物
 #include <vector>
 #include <string>
-#include <memory> // 確保有包含這個
+#include <memory>
 
 class BombTower : public Tower {
 public:
+    void Upgrade() override;
     BombTower(glm::vec2 pos);
     void Draw() override;
     void Attack(std::shared_ptr<Enemy> target,
@@ -23,8 +24,7 @@ private:
     float m_AttackStartTime = 0.0f;
     std::vector<std::string> m_AttackFrames;
 
-    // --- 核心修正：加入這幾行 ---
-    std::shared_ptr<Enemy> m_CurrentTarget; // 讓類別能記住目標
+    std::shared_ptr<Enemy> m_CurrentTarget;
     std::vector<std::shared_ptr<Enemy>>* m_AllEnemiesRef = nullptr;
     std::vector<std::shared_ptr<Projectile>>* m_ProjectilesRef = nullptr;
 };
