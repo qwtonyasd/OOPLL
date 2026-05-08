@@ -14,10 +14,10 @@ public:
     Arrow(glm::vec2 startPos, std::shared_ptr<Enemy> target, float damage, Enemy::DamageType damageType)
         : Projectile(startPos, target, damage, damageType), m_StartPos(startPos) {
 
-        SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/ArcherTower/Arrow/1.png"));
+        SetDrawable(std::make_shared<Util::Image>("../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/Arrow/1.png"));
 
         // 預先準備好特效路徑（這裡你可以根據實際張數調整）
-        std::string effectPath = "../PTSD/assets/sprites/images/ArcherTower/Arrow/";
+        std::string effectPath = "../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/Arrow/";
         for (int i = 2; i <= 11; ++i) {
             m_HitFrames.push_back(effectPath + std::to_string(i) + ".png");
         }
