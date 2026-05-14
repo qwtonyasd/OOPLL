@@ -5,7 +5,7 @@
 #include "Util/Image.hpp"
 #include "Util/Time.hpp"
 #include "Enemy.hpp"
-#include "Tower/Projectlie/Projectile.hpp"
+#include "Tower/Projectile/Projectile.hpp"
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>

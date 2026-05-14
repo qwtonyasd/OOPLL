@@ -6,12 +6,20 @@
 #include <memory>
 #include "Util/GameObject.hpp"
 #include "Util/Image.hpp"
+#include "Enemy.hpp" // 需要 Enemy::Type
 
+// 定義每一波的內容
+struct WaveConfig {
+    std::vector<Enemy::Type> enemyList;
+};
+
+// 完整關卡配置
 struct LevelConfig {
     int levelId;
     std::string imagePath;
     std::vector<std::vector<glm::vec2>> routes;
     std::vector<glm::vec2> towerSlotPositions;
+    std::vector<WaveConfig> waves; // 新增：波次資訊
 };
 
 class Map : public Util::GameObject {
@@ -19,26 +27,22 @@ public:
     explicit Map(const LevelConfig& config) : m_Config(config) {
         m_Drawable = std::make_shared<Util::Image>(config.imagePath);
         m_ZIndex = -10.0f;
-        m_Transform.translation = {0, 0};
-        m_Transform.scale = {1.0f, 1.0f};
     }
 
-    const std::vector<std::vector<glm::vec2>>& GetRoutes() const {
-        return m_Config.routes;
-    }
+    const std::vector<std::vector<glm::vec2>>& GetRoutes() const { return m_Config.routes; }
 
-    // 修正：回傳靜態變數，避免引用到已銷毀的暫存物件
     const std::vector<glm::vec2>& GetRandomRoute() const {
-        static const std::vector<glm::vec2> empty_route;
-        if (m_Config.routes.empty()) return empty_route;
-
-        int index = rand() % m_Config.routes.size();
-        return m_Config.routes[index];
+        if (m_Config.routes.empty()) {
+            static const std::vector<glm::vec2> empty;
+            return empty;
+        }
+        return m_Config.routes[rand() % m_Config.routes.size()];
     }
 
-    const std::vector<glm::vec2>& GetTowerSlots() const {
-        return m_Config.towerSlotPositions;
-    }
+    const std::vector<glm::vec2>& GetTowerSlots() const { return m_Config.towerSlotPositions; }
+
+    // 新增：取得波次資料
+    const std::vector<WaveConfig>& GetWaves() const { return m_Config.waves; }
 
 private:
     LevelConfig m_Config;

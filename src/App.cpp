@@ -6,7 +6,6 @@
 #include "Util/Time.hpp"
 #include "Util/Logger.hpp"
 #include "GameManager.hpp"
-#include "VictoryMenu.hpp"
 
 void App::Start() {
     LOG_TRACE("App Started");
@@ -52,7 +51,6 @@ void App::HandleGamePlay() {
     float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
     auto currentMap = m_MapManager->GetCurrentMap();
 
-    // 1. 勝利選單邏輯
     if (m_VictoryMenu->IsVisible()) {
         m_VictoryMenu->Update();
         if (m_VictoryMenu->IsRestartPressed()) {
@@ -66,7 +64,7 @@ void App::HandleGamePlay() {
             return;
         }
     } else {
-        // 2. 遊戲核心流程
+        // --- 波次邏輯：直接使用從 Map 拿到的 m_Waves ---
         int currentWaveIdx = gm.GetCurrentWave() - 1;
         if (currentWaveIdx < static_cast<int>(m_Waves.size())) {
             auto& currentWave = m_Waves[currentWaveIdx];
@@ -91,7 +89,8 @@ void App::HandleGamePlay() {
 
                 if (static_cast<size_t>(m_SpawnIndex) >= currentWave.enemyList.size() && m_Enemies.empty()) {
                     m_IsWaveActive = false;
-                    if (gm.GetCurrentWave() < gm.GetTotalWaves()) {
+                    // 使用 m_Waves.size() 動態判斷總波次
+                    if (gm.GetCurrentWave() < static_cast<int>(m_Waves.size())) {
                         gm.NextWave();
                     } else {
                         m_VictoryMenu->SetVisible(true, gm.GetHealth());
@@ -100,7 +99,7 @@ void App::HandleGamePlay() {
             }
         }
 
-        // 3. 更新所有塔與移動物
+        // --- 更新與碰撞 ---
         m_TowerManager->UpdateAll(m_Enemies, m_Projectiles);
 
         for (auto it = m_Projectiles.begin(); it != m_Projectiles.end(); ) {
@@ -122,9 +121,7 @@ void App::HandleGamePlay() {
             }
         }
 
-        // ==========================================
-        // 4. 交互邏輯 (重點修改區塊)
-        // ==========================================
+        // --- 交互邏輯 ---
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
 
         if (m_BuildMenu->IsVisible()) {
@@ -133,6 +130,7 @@ void App::HandleGamePlay() {
                 if (m_SelectedSlot) {
                     int cost = Tower::GetBaseCost(selectedType);
                     if (gm.SpendMoney(cost)) {
+                        // 使用當前地圖的第一條路徑作為預設參考
                         std::vector<glm::vec2> route = (!currentMap->GetRoutes().empty()) ? currentMap->GetRoutes()[0] : std::vector<glm::vec2>{};
                         m_TowerManager->AddTower(selectedType, m_SelectedSlot->GetPosition(), route);
                         m_SelectedSlot->SetOccupied(true);
@@ -141,7 +139,6 @@ void App::HandleGamePlay() {
                 m_BuildMenu->SetVisible(false);
                 m_SelectedSlot = nullptr;
             } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-                // 點擊 BuildMenu 以外的地方則關閉選單
                 if (glm::distance(mousePos, m_BuildMenu->GetTransform().translation) > 100.0f) {
                     m_BuildMenu->SetVisible(false);
                     m_SelectedSlot = nullptr;
@@ -149,42 +146,32 @@ void App::HandleGamePlay() {
             }
         }
         else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-            // A. 優先檢查是否點擊到「已存在的塔」來顯示範圍
             if (m_TowerManager->HandleClick(mousePos)) {
-                // 如果點到了塔，HandleClick 內部會處理 SetSelected(true)
-                LOG_DEBUG("Tower selected via Mouse Click.");
+                LOG_DEBUG("Tower selected.");
             }
             else {
-                // B. 如果沒點到塔，檢查是否點擊到「空的塔位」
                 bool hitSlot = false;
                 for (auto& slot : m_TowerSlots) {
                     if (!slot->IsOccupied() && glm::distance(mousePos, slot->GetPosition()) < 50.0f) {
                         m_SelectedSlot = slot;
                         m_BuildMenu->SetPosition(slot->GetPosition());
                         m_BuildMenu->SetVisible(true);
-
-                        // 開啟蓋塔選單時，隱藏其他塔的範圍圈
                         m_TowerManager->ClearSelection();
                         hitSlot = true;
                         break;
                     }
                 }
-
-                // C. 如果點到純地圖背景（沒點到塔也沒點到塔位）
-                if (!hitSlot) {
-                    m_TowerManager->ClearSelection();
-                }
+                if (!hitSlot) m_TowerManager->ClearSelection();
             }
         }
     }
 
-    // 5. 渲染順序
+    // --- 渲染 ---
     m_MapManager->Draw();
     for (auto& slot : m_TowerSlots) slot->Draw();
-    m_TowerManager->DrawAll(); // 這會呼叫各個 Tower 的 Draw()，顯示範圍圈與選單
+    m_TowerManager->DrawAll();
     for (auto& enemy : m_Enemies) enemy->Draw();
     for (auto& proj : m_Projectiles) proj->Draw();
-
     if (m_BuildMenu->IsVisible()) m_BuildMenu->Draw();
     if (m_Hud) m_Hud->Draw();
     if (m_VictoryMenu->IsVisible()) m_VictoryMenu->Draw();
@@ -194,52 +181,45 @@ void App::HandleGamePlay() {
 
 void App::ChangeLevel(int levelId) {
     m_CurrentLevelID = levelId;
+
+    // 1. 透過工廠獲取完整關卡資訊
     auto newMap = MapFactory::CreateLevel(levelId);
+
+    // 2. 更新 MapManager
     m_MapManager->AddLevel(levelId, newMap);
     m_MapManager->SwitchLevel(levelId);
 
-    GameManager::GetInstance().InitLevel(265, 20);
-    InitWaveData();
+    // 3. 從 Map 物件同步波次劇本
+    m_Waves = newMap->GetWaves();
 
+    // 4. 初始化遊戲數值
+    GameManager::GetInstance().InitLevel(265, 20);
+    // 同步 GameManager 的總波次 (這很重要，勝利條件會用到)
+    GameManager::GetInstance().SetTotalWaves(static_cast<int>(m_Waves.size()));
+
+    // 5. 清理場地
     m_TowerManager->Clear();
     m_Projectiles.clear();
     m_Enemies.clear();
     m_TowerSlots.clear();
 
-    auto currentMap = m_MapManager->GetCurrentMap();
-    if (currentMap) {
-        for (const auto& pos : currentMap->GetTowerSlots()) {
-            m_TowerSlots.push_back(std::make_shared<TowerSlot>(pos));
-        }
+    // 6. 根據 Map 的配置生成塔位
+    for (const auto& pos : newMap->GetTowerSlots()) {
+        m_TowerSlots.push_back(std::make_shared<TowerSlot>(pos));
     }
 
+    // 7. 重置波次狀態機
+    m_SpawnIndex = 0;
+    m_SpawnTimer = 0.0f;
+    m_WaveBreakTimer = 0.0f;
+    m_IsWaveActive = false;
+
+    // 8. 重置選單狀態
     m_BuildMenu->SetVisible(false);
     if (m_VictoryMenu) {
         m_VictoryMenu->SetVisible(false, 0);
         m_VictoryMenu->ResetFlags();
     }
-}
-
-// InitWaveData(), End() 等其餘函式保持不變...
-void App::InitWaveData() {
-    m_Waves.clear();
-    m_Waves.push_back({{Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN}});
-    m_Waves.push_back({std::vector<Enemy::Type>(6, Enemy::Type::GOBLIN)});
-    m_Waves.push_back({std::vector<Enemy::Type>(9, Enemy::Type::GOBLIN)});
-    m_Waves.push_back({{Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::ORC}});
-    m_Waves.push_back({{Enemy::Type::ORC, Enemy::Type::ORC, Enemy::Type::ORC}});
-
-    WaveConfig w6;
-    for(int i=0; i<10; i++) w6.enemyList.push_back(Enemy::Type::GOBLIN);
-    for(int i=0; i<4; i++) w6.enemyList.push_back(Enemy::Type::ORC);
-    m_Waves.push_back(w6);
-
-    m_Waves.push_back({std::vector<Enemy::Type>(16, Enemy::Type::GOBLIN)});
-
-    m_SpawnIndex = 0;
-    m_SpawnTimer = 0.0f;
-    m_WaveBreakTimer = 0.0f;
-    m_IsWaveActive = false;
 }
 
 void App::End() {

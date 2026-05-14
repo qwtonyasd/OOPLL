@@ -2,7 +2,7 @@
 #define ARCHER_TOWER_H
 
 #include "Tower.hpp"
-#include "Tower/Projectlie/Projectile.hpp"
+#include "Tower/Projectile/Projectile.hpp"
 #include "Util/Image.hpp"
 #include "Core/Drawable.hpp"
 #include "Util/Logger.hpp"

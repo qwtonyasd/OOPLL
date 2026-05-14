@@ -1,6 +1,6 @@
 #include "tower/BombTower.h"
 #include "Util/Time.hpp"
-#include "Tower/Projectlie/Projectile.hpp"
+#include "Tower/Projectile/Projectile.hpp"
 
 BombTower::BombTower(glm::vec2 pos)
     : Tower(pos, "../PTSD/assets/sprites/images/BombTower/TowerLevel1/1.png",

@@ -10,7 +10,7 @@
 #include "tower/ArcherTower.h"
 #include "tower/MageTower.h"
 #include "tower/BombTower.h"
-#include "Tower/Projectlie/Projectile.hpp"
+#include "Tower/Projectile/Projectile.hpp"
 
 #include "Util/GameObject.hpp"
 #include "Util/Logger.hpp"

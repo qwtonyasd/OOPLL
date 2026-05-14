@@ -15,7 +15,7 @@ public:
         m_Money = startMoney;
         m_Health = startHealth;
         m_CurrentWave = 1;
-        m_TotalWaves = 7;
+        // 這裡不需要硬編碼 m_TotalWaves = 7，因為 App.cpp 會透過 SetTotalWaves 設定
     }
 
     // 金錢邏輯
@@ -42,6 +42,10 @@ public:
     // 波次邏輯
     int GetCurrentWave() const { return m_CurrentWave; }
     int GetTotalWaves() const { return m_TotalWaves; }
+
+    // 補上這個函式來修復編譯錯誤
+    void SetTotalWaves(int waves) { m_TotalWaves = waves; }
+
     void NextWave() {
         if (m_CurrentWave < m_TotalWaves) {
             m_CurrentWave++;
@@ -53,7 +57,7 @@ private:
     int m_Money = 0;
     int m_Health = 0;
     int m_CurrentWave = 1;
-    int m_TotalWaves = 7;
+    int m_TotalWaves = 0; // 預設改為 0，由關卡初始化時設定
 
     void TriggerGameOver() {
         std::cout << "Game Over!" << std::endl;

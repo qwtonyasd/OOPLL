@@ -1,6 +1,6 @@
 #include "tower/MageTower.h"
 #include "Util/Time.hpp"
-#include "Tower/Projectlie/Projectile.hpp"
+#include "Tower/Projectile/Projectile.hpp"
 
 MageTower::MageTower(glm::vec2 pos)
     : Tower(pos, "../PTSD/assets/sprites/images/MageTower/TowerLevel1/1.png",

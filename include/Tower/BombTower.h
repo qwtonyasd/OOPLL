@@ -2,7 +2,7 @@
 #define BOMB_TOWER_H
 
 #include "Tower.hpp"
-#include "Tower/Projectlie/Projectile.hpp" // 修改：改用萬用投射物
+#include "Tower/Projectile/Projectile.hpp" // 修改：改用萬用投射物
 #include <vector>
 #include <string>
 #include <memory>
