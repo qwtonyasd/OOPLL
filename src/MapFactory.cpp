@@ -5,6 +5,7 @@ std::shared_ptr<Map> MapFactory::CreateLevel(int levelId) {
     config.levelId = levelId;
 
         if (levelId == 1) {
+            config.initialMoney = 265;
             config.imagePath = "../PTSD/assets/sprites/images/Map/1.png";
             // 設計 4 條路線
             config.routes = {
@@ -40,6 +41,7 @@ std::shared_ptr<Map> MapFactory::CreateLevel(int levelId) {
             config.waves.push_back({std::vector<Enemy::Type>(16, Enemy::Type::GOBLIN)});
         }
         else if (levelId == 2) {
+            config.initialMoney = 220;
             config.imagePath = "../PTSD/assets/sprites/images/Map/2.png";
             config.routes = {
                 { {337, 108}, {189, 113}, {180, 143}, {169, 176}, {160, 207}, {137, 225}, {114, 232}, {92, 238}, {70, 240}, {45, 231}, {32, 220}, {20, 206}, {13, 184}, {5, 168}, {3, 146}, {-1, 132}, {-10, 118}, {-28, 109}, {-52, 105}, {-86, 100}, {-110, 97}, {-143, 91}, {-166, 79}, {-183, 66}, {-193, 35}, {-192, 1}, {-182, -20}, {-159, -33}, {-135, -43}, {-106, -47}, {-82, -48}, {-64, -46}, {-43, -40}, {-15, -35}, {3, -30}, {36, -28}, {53, -32}, {78, -43}, {93, -68}, {91, -84}, {79, -96}, {65, -106}, {47, -112}, {13, -119}, {-11, -126}, {-42, -143}, {-54, -177}, {-54, -207}, {-56, -248}, {-60, -274}, {-67, -312}}, // 路線 1
@@ -48,7 +50,39 @@ std::shared_ptr<Map> MapFactory::CreateLevel(int levelId) {
                  // 路線 4 (範例)
             };
             config.towerSlotPositions = { {88, 146}, {90, 93} , {-54, 145}, {-105, 26}, {-49, -91}, {27, -73}, {36, -191}};
+            config.waves.push_back({std::vector<Enemy::Type>(20, Enemy::Type::GOBLIN)});
 
+            // Wave 2: 24 Goblin
+            config.waves.push_back({std::vector<Enemy::Type>(24, Enemy::Type::GOBLIN)});
+
+            // Wave 3: 4 Orc + 12 Goblin
+            WaveConfig w3;
+            for(int i=0; i<4; i++) w3.enemyList.push_back(Enemy::Type::ORC);
+            for(int i=0; i<12; i++) w3.enemyList.push_back(Enemy::Type::GOBLIN);
+            config.waves.push_back(w3);
+
+            // Wave 4: 6 Wulf
+            config.waves.push_back({std::vector<Enemy::Type>(6, Enemy::Type::WULF)});
+
+            // Wave 5: 6 Orc + 12 Goblin
+            WaveConfig w5;
+            for(int i=0; i<6; i++) w5.enemyList.push_back(Enemy::Type::ORC);
+            for(int i=0; i<12; i++) w5.enemyList.push_back(Enemy::Type::GOBLIN);
+            config.waves.push_back(w5);
+
+            // Wave 6: 6 Orc + 6 Wulf + 10 Goblin
+            WaveConfig w6;
+            for(int i=0; i<6; i++) w6.enemyList.push_back(Enemy::Type::ORC);
+            for(int i=0; i<6; i++) w6.enemyList.push_back(Enemy::Type::WULF);
+            for(int i=0; i<10; i++) w6.enemyList.push_back(Enemy::Type::GOBLIN);
+            config.waves.push_back(w6);
+
+            // Wave 7: 10 Orc + 10 Wulf + 10 Goblin
+            WaveConfig w7;
+            for(int i=0; i<10; i++) w7.enemyList.push_back(Enemy::Type::ORC);
+            for(int i=0; i<10; i++) w7.enemyList.push_back(Enemy::Type::WULF);
+            for(int i=0; i<10; i++) w7.enemyList.push_back(Enemy::Type::GOBLIN);
+            config.waves.push_back(w7);
         }
         else if (levelId == 3) {
             config.imagePath = "../PTSD/assets/sprites/images/Map/3.png";

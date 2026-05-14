@@ -16,6 +16,7 @@ struct WaveConfig {
 // 完整關卡配置
 struct LevelConfig {
     int levelId;
+    int initialMoney;
     std::string imagePath;
     std::vector<std::vector<glm::vec2>> routes;
     std::vector<glm::vec2> towerSlotPositions;
@@ -43,6 +44,7 @@ public:
 
     // 新增：取得波次資料
     const std::vector<WaveConfig>& GetWaves() const { return m_Config.waves; }
+    int GetInitialMoney() const { return m_Config.initialMoney; }
 
 private:
     LevelConfig m_Config;

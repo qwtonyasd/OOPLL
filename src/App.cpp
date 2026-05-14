@@ -192,8 +192,8 @@ void App::ChangeLevel(int levelId) {
     // 3. 從 Map 物件同步波次劇本
     m_Waves = newMap->GetWaves();
 
-    // 4. 初始化遊戲數值
-    GameManager::GetInstance().InitLevel(265, 20);
+    int startMoney = newMap->GetInitialMoney();
+    GameManager::GetInstance().InitLevel(startMoney, 20);
     // 同步 GameManager 的總波次 (這很重要，勝利條件會用到)
     GameManager::GetInstance().SetTotalWaves(static_cast<int>(m_Waves.size()));
 

@@ -60,6 +60,24 @@ public:
                 generatePaths("Orc", 14970, 15004)  // 死亡
             );
         }
+        else if (type == Enemy::Type::WULF) {
+            // Wulf 動畫區間設定
+            std::vector<std::vector<std::string>> moveAnis = {
+                generatePaths("Wulf", 1, 8),   // 向右 (向左會由程式自動轉向)
+                generatePaths("Wulf", 9, 11),  // 向上
+                generatePaths("Wulf", 12, 18)  // 向下
+            };
+
+            return std::make_shared<Enemy>(
+                type,
+                path,
+                70.0f,                         // 速度可以設快一點 (狼通常比較快)
+                40.0f,                         // HP 數值參考
+                moveAnis,
+                generatePaths("Wulf", 19, 28), // 攻擊
+                generatePaths("Wulf", 29, 37)  // 死亡
+            );
+        }
         return nullptr;
     }
 };

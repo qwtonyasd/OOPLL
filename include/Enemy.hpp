@@ -13,7 +13,7 @@ class Soldier;
 
 class Enemy : public Unit {
 public:
-    enum class Type { GOBLIN, ORC };
+    enum class Type { GOBLIN, ORC, WULF};
     enum class State { MOVE_RIGHT, MOVE_UP, MOVE_DOWN, ATTACK, DEATH };
     enum class DamageType { PHYSICAL, MAGIC };
 
