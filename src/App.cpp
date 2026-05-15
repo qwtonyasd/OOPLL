@@ -135,42 +135,66 @@ void App::HandleGamePlay() {
         }
 
         // --- 交互邏輯 (滑鼠點擊、蓋塔、選單) ---
-        glm::vec2 mousePos = Util::Input::GetCursorPosition();
+glm::vec2 mousePos = Util::Input::GetCursorPosition();
+auto& gm = GameManager::GetInstance();
 
-        if (m_BuildMenu->IsVisible()) {
-            Tower::Type selectedType = m_BuildMenu->Update();
-            if (selectedType != Tower::Type::NONE) {
-                if (m_SelectedSlot) {
-                    int cost = Tower::GetBaseCost(selectedType);
-                    if (gm.SpendMoney(cost)) {
-                        m_TowerManager->AddTower(selectedType, m_SelectedSlot->GetPosition(), {});
-                        m_SelectedSlot->SetOccupied(true);
-                    }
-                }
-                m_BuildMenu->SetVisible(false);
-                m_SelectedSlot = nullptr;
-            } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-                if (glm::distance(mousePos, m_BuildMenu->GetTransform().translation) > 100.0f) {
-                    m_BuildMenu->SetVisible(false);
-                    m_SelectedSlot = nullptr;
-                }
-            }
-        } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-            if (!m_TowerManager->HandleClick(mousePos)) {
-                bool hitSlot = false;
-                for (auto& slot : m_TowerSlots) {
-                    if (!slot->IsOccupied() && glm::distance(mousePos, slot->GetPosition()) < 50.0f) {
-                        m_SelectedSlot = slot;
-                        m_BuildMenu->SetPosition(slot->GetPosition());
-                        m_BuildMenu->SetVisible(true);
-                        m_TowerManager->ClearSelection();
-                        hitSlot = true;
-                        break;
-                    }
-                }
-                if (!hitSlot) m_TowerManager->ClearSelection();
+if (m_BuildMenu->IsVisible()) {
+    Tower::Type selectedType = m_BuildMenu->Update();
+    if (selectedType != Tower::Type::NONE) {
+        if (m_SelectedSlot) {
+            int cost = Tower::GetBaseCost(selectedType);
+            if (gm.SpendMoney(cost)) {
+                m_TowerManager->AddTower(selectedType, m_SelectedSlot->GetPosition(), {});
+                m_SelectedSlot->SetOccupied(true);
             }
         }
+        m_BuildMenu->SetVisible(false);
+        m_SelectedSlot = nullptr;
+    }
+    else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+        if (glm::distance(mousePos, m_BuildMenu->GetTransform().translation) > 100.0f) {
+            m_BuildMenu->SetVisible(false);
+            m_SelectedSlot = nullptr;
+        }
+    }
+} // <--- 這是 m_BuildMenu->IsVisible() 的結尾，請檢查有沒有漏掉這顆
+
+else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+    bool upgradeHandled = false;
+
+    // 1. 檢查升級點擊
+    for (auto& tower : m_TowerManager->GetTowers()) {
+        if (tower->GetIsSelected() && tower->IsUpgradeClicked(mousePos)) {
+            int cost = tower->GetUpgradeCost();
+            if (gm.SpendMoney(cost)) {
+                tower->Upgrade();
+                LOG_INFO("Upgrade Successful!");
+            }
+            upgradeHandled = true;
+            break;
+        }
+    }
+
+    // 2. 如果沒處理升級，才處理塔位點擊或選取
+    if (!upgradeHandled) {
+        if (!m_TowerManager->HandleClick(mousePos)) {
+            bool hitSlot = false;
+            for (auto& slot : m_TowerSlots) {
+                if (!slot->IsOccupied() && glm::distance(mousePos, slot->GetPosition()) < 50.0f) {
+                    m_SelectedSlot = slot;
+                    m_BuildMenu->SetPosition(slot->GetPosition());
+                    m_BuildMenu->SetVisible(true);
+                    m_TowerManager->ClearSelection();
+                    hitSlot = true;
+                    break;
+                }
+            }
+            if (!hitSlot) {
+                m_TowerManager->ClearSelection();
+            }
+        }
+    }
+} // <--- 這是 else if (MOUSE_LB) 的結尾
     }
 
     // --- 渲染 ---

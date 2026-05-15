@@ -19,6 +19,8 @@ class TowerManager {
 public:
     TowerManager(Util::GameObject& root) : m_Root(root) {}
 
+    //讓外部可以讀取塔的清單
+    std::vector<std::shared_ptr<Tower>>& GetTowers() { return m_Towers; }
     // --- 新增：處理點擊塔的選取邏輯 ---
     bool HandleClick(const glm::vec2& mousePos) {
         bool hit = false;

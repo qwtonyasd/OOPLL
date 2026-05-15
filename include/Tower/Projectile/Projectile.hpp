@@ -57,9 +57,12 @@ private:
         m_ElapsedTime += dt;
         float progress = std::clamp(m_ElapsedTime / m_FlightDuration, 0.0f, 1.0f);
 
-        if (m_Target && m_Target->GetHP() > 0) m_FinalLandPos = m_Target->GetPosition();
+        // 如果目標還活著，更新最終落點（追蹤效果）
+        if (m_Target && m_Target->GetHP() > 0) {
+            m_FinalLandPos = m_Target->GetPosition();
+        }
 
-        glm::vec2 oldPos = m_Transform.translation;
+        glm::vec2 oldPos = m_Transform.translation; // 紀錄移動前的位置
         glm::vec2 currentGroundPos = glm::mix(m_StartPos, m_FinalLandPos, progress);
 
         float height = 0.0f;
@@ -70,9 +73,13 @@ private:
         m_Transform.translation = currentGroundPos;
         m_Transform.translation.y += height;
 
-        if (m_MoveType == MoveType::PARABOLA_ROTATE) {
-            glm::vec2 dir = m_Transform.translation - oldPos;
-            if (glm::length(dir) > 0.0001f) m_Transform.rotation = std::atan2(dir.y, dir.x);
+        // --- 核心修正：計算面向角度 ---
+        // 無論是箭矢 (PARABOLA_ROTATE) 還是魔法彈 (STRAIGHT)，都計算面向位移方向
+        if (m_MoveType == MoveType::PARABOLA_ROTATE || m_MoveType == MoveType::STRAIGHT) {
+            glm::vec2 dir = m_Transform.translation - oldPos; // 計算這幀移動的向量
+            if (glm::length(dir) > 0.0001f) {
+                m_Transform.rotation = std::atan2(dir.y, dir.x);
+            }
         }
 
         if (progress >= 1.0f) HandleImpact();
