@@ -64,32 +64,45 @@ void App::HandleGamePlay() {
             return;
         }
     } else {
-        // --- 波次邏輯：直接使用從 Map 拿到的 m_Waves ---
+        // --- 波次邏輯：時間戳記出怪模式 ---
         int currentWaveIdx = gm.GetCurrentWave() - 1;
         if (currentWaveIdx < static_cast<int>(m_Waves.size())) {
-            auto& currentWave = m_Waves[currentWaveIdx];
+            auto& waveConfig = m_Waves[currentWaveIdx];
 
             if (!m_IsWaveActive) {
                 if (m_Enemies.empty()) {
                     m_WaveBreakTimer += dt;
                     if (m_WaveBreakTimer >= 3.0f) {
                         m_IsWaveActive = true;
-                        m_SpawnIndex = 0;
+                        m_WaveTimer = 0.0f;      // 重置時間
                         m_WaveBreakTimer = 0.0f;
+                        m_PendingSubWaves = waveConfig.subWaves; // 複製配置到暫存
                     }
                 }
             } else {
-                m_SpawnTimer += dt;
-                if (m_SpawnTimer >= 1.2f && static_cast<size_t>(m_SpawnIndex) < currentWave.enemyList.size()) {
-                    const auto& route = currentMap->GetRandomRoute();
-                    m_Enemies.push_back(EnemyFactory::Create(currentWave.enemyList[m_SpawnIndex], route));
-                    m_SpawnIndex++;
-                    m_SpawnTimer = 0.0f;
+                m_WaveTimer += dt;
+
+                // 檢查哪些怪物時間到了
+                for (auto it = m_PendingSubWaves.begin(); it != m_PendingSubWaves.end(); ) {
+                    if (m_WaveTimer >= it->spawnDelay) {
+                        // 根據路徑索引獲取座標點
+                        const auto& route = currentMap->GetRouteByIndex(it->routeIndex);
+
+                        // 生成怪物
+                        for (auto& enemyType : it->enemies) {
+                            m_Enemies.push_back(EnemyFactory::Create(enemyType, route));
+                        }
+
+                        // 生完後從待處理清單移除
+                        it = m_PendingSubWaves.erase(it);
+                    } else {
+                        ++it;
+                    }
                 }
 
-                if (static_cast<size_t>(m_SpawnIndex) >= currentWave.enemyList.size() && m_Enemies.empty()) {
+                // 如果怪生完了且畫面上清空了，就進入下一波
+                if (m_PendingSubWaves.empty() && m_Enemies.empty()) {
                     m_IsWaveActive = false;
-                    // 使用 m_Waves.size() 動態判斷總波次
                     if (gm.GetCurrentWave() < static_cast<int>(m_Waves.size())) {
                         gm.NextWave();
                     } else {
@@ -121,7 +134,7 @@ void App::HandleGamePlay() {
             }
         }
 
-        // --- 交互邏輯 ---
+        // --- 交互邏輯 (滑鼠點擊、蓋塔、選單) ---
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
 
         if (m_BuildMenu->IsVisible()) {
@@ -130,9 +143,7 @@ void App::HandleGamePlay() {
                 if (m_SelectedSlot) {
                     int cost = Tower::GetBaseCost(selectedType);
                     if (gm.SpendMoney(cost)) {
-                        // 使用當前地圖的第一條路徑作為預設參考
-                        std::vector<glm::vec2> route = (!currentMap->GetRoutes().empty()) ? currentMap->GetRoutes()[0] : std::vector<glm::vec2>{};
-                        m_TowerManager->AddTower(selectedType, m_SelectedSlot->GetPosition(), route);
+                        m_TowerManager->AddTower(selectedType, m_SelectedSlot->GetPosition(), {});
                         m_SelectedSlot->SetOccupied(true);
                     }
                 }
@@ -144,12 +155,8 @@ void App::HandleGamePlay() {
                     m_SelectedSlot = nullptr;
                 }
             }
-        }
-        else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-            if (m_TowerManager->HandleClick(mousePos)) {
-                LOG_DEBUG("Tower selected.");
-            }
-            else {
+        } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+            if (!m_TowerManager->HandleClick(mousePos)) {
                 bool hitSlot = false;
                 for (auto& slot : m_TowerSlots) {
                     if (!slot->IsOccupied() && glm::distance(mousePos, slot->GetPosition()) < 50.0f) {
@@ -181,45 +188,33 @@ void App::HandleGamePlay() {
 
 void App::ChangeLevel(int levelId) {
     m_CurrentLevelID = levelId;
-
-    // 1. 透過工廠獲取完整關卡資訊
     auto newMap = MapFactory::CreateLevel(levelId);
 
-    // 2. 更新 MapManager
     m_MapManager->AddLevel(levelId, newMap);
     m_MapManager->SwitchLevel(levelId);
 
-    // 3. 從 Map 物件同步波次劇本
     m_Waves = newMap->GetWaves();
 
     int startMoney = newMap->GetInitialMoney();
     GameManager::GetInstance().InitLevel(startMoney, 20);
-    // 同步 GameManager 的總波次 (這很重要，勝利條件會用到)
     GameManager::GetInstance().SetTotalWaves(static_cast<int>(m_Waves.size()));
 
-    // 5. 清理場地
     m_TowerManager->Clear();
     m_Projectiles.clear();
     m_Enemies.clear();
     m_TowerSlots.clear();
+    m_PendingSubWaves.clear();
 
-    // 6. 根據 Map 的配置生成塔位
     for (const auto& pos : newMap->GetTowerSlots()) {
         m_TowerSlots.push_back(std::make_shared<TowerSlot>(pos));
     }
 
-    // 7. 重置波次狀態機
-    m_SpawnIndex = 0;
-    m_SpawnTimer = 0.0f;
+    m_WaveTimer = 0.0f;
     m_WaveBreakTimer = 0.0f;
     m_IsWaveActive = false;
 
-    // 8. 重置選單狀態
     m_BuildMenu->SetVisible(false);
-    if (m_VictoryMenu) {
-        m_VictoryMenu->SetVisible(false, 0);
-        m_VictoryMenu->ResetFlags();
-    }
+    if (m_VictoryMenu) m_VictoryMenu->SetVisible(false, 0);
 }
 
 void App::End() {

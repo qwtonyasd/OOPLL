@@ -13,7 +13,7 @@
 #include "Enemy.hpp"
 #include "Tower/Projectile/Projectile.hpp"
 #include "VictoryMenu.hpp"
-#include "Map.hpp" // 確保能讀到 WaveConfig 定義
+#include "Map.hpp"
 
 class App {
 public:
@@ -45,14 +45,14 @@ private:
     std::vector<std::shared_ptr<Projectile>> m_Projectiles;
     std::shared_ptr<TowerSlot> m_SelectedSlot = nullptr;
 
-    // 當前關卡的波次快照
+    // 當前關卡的波次配置與暫存
     std::vector<WaveConfig> m_Waves;
+    std::vector<SubWave> m_PendingSubWaves; // 尚未生成的怪物清單
 
     // 波次控制變數
-    int m_SpawnIndex = 0;
-    float m_SpawnTimer = 0.0f;
-    float m_WaveBreakTimer = 0.0f;
-    bool m_IsWaveActive = false;
+    float m_WaveTimer = 0.0f;       // 波次進行時間
+    float m_WaveBreakTimer = 0.0f;  // 波次間隔計時
+    bool m_IsWaveActive = false;    // 波次是否進行中
 
     int m_CurrentLevelID = 1;
     State m_CurrentState = State::START;
