@@ -66,6 +66,7 @@ add_executable(${PROJECT_NAME}
         src/Enemy.cpp
         src/VictoryMenu.cpp
         src/MapFactory.cpp
+        include/Shaman.hpp
 )
 
 if(MSVC)

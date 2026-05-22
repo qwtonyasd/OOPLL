@@ -1,6 +1,7 @@
 #include "Enemy.hpp"
 #include "Soldier.hpp"
 #include "Util/Time.hpp"
+#include <cmath> // 確保 std::round 可用
 
 Enemy::Enemy(Enemy::Type type, const std::vector<glm::vec2>& path, float speed, float hp,
              const std::vector<std::vector<std::string>>& moveAnimations,
@@ -27,13 +28,22 @@ void Enemy::Update() {
     }
     if (m_CurrentState == State::DEATH) return;
 
+    // 額外保險：如果當前狀態是 SKILL，不執行以下移動與普攻計時邏輯（由 Shaman 內部自行阻斷與轉換）
+    if (m_CurrentState == State::SKILL) return;
+
     if (m_IsBlocked) {
         SetState(State::ATTACK);
 
         if (m_TargetSoldier && m_TargetSoldier->GetHP() > 0) {
             m_AttackTimer += dt;
             if (m_AttackTimer >= m_AttackCooldown) {
-                float dmg = (m_Type == Type::GOBLIN) ? 5.0f : 12.0f;
+                // 根據怪物類型分配傷害 (新加入強大的 Ogre 傷害)
+                float dmg = 5.0f;
+                if (m_Type == Type::ORC)       dmg = 12.0f;
+                else if (m_Type == Type::OGRE) dmg = 25.0f;  // Ogre 是重擊型 Boss 傷害給 25
+                else if (m_Type == Type::WULF) dmg = 8.0f;   // 補上狼與薩滿的基本普攻參考傷害
+                else if (m_Type == Type::SHAMAN) dmg = 6.0f;
+
                 m_TargetSoldier->TakeDamage(dmg);
                 m_AttackTimer = 0.0f;
             }
@@ -58,7 +68,7 @@ void Enemy::Update() {
     }
 }
 
-// --- 修正後的 Draw 函式 ---
+// --- Draw 函式 ---
 void Enemy::Draw() {
     if (m_HP <= 0 && IsDeadAnimationFinished()) return;
 
@@ -69,10 +79,18 @@ void Enemy::Draw() {
 
 void Enemy::TakeDamage(float damage, DamageType damageType) {
     float finalDamage = damage;
+
+    // Orc 擁有物理減傷
     if (m_Type == Enemy::Type::ORC && damageType == DamageType::PHYSICAL) {
         finalDamage = std::round(damage / 1.5f);
-        if (finalDamage < 1.0f) finalDamage = 1.0f;
     }
+    // 新增：Ogre 身為大 Boss，可以給予不分魔物傷的全面 20% 減傷 (除以 1.25)
+    else if (m_Type == Enemy::Type::OGRE) {
+        finalDamage = std::round(damage / 1.25f);
+    }
+
+    if (finalDamage < 1.0f) finalDamage = 1.0f;
+
     m_HP -= finalDamage;
     if (m_HP < 0) m_HP = 0;
 }
@@ -98,6 +116,7 @@ void Enemy::SetState(State newState) {
         case State::MOVE_DOWN:  SetDrawable(m_MoveDownAni);  break;
         case State::ATTACK:     SetDrawable(m_AttackAni);    break;
         case State::DEATH:      SetDrawable(m_DeadAni);      break;
+        case State::SKILL:                                   break; // 修正：補上 case 消除 -Wswitch 警告
     }
 }
 
