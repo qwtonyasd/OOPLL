@@ -14,8 +14,18 @@
 #include "Util/TransformUtils.hpp"
 #include "Util/GameObject.hpp"
 #include "Util/Image.hpp"
+#include "Util/Text.hpp"
 class Tower : public Util::GameObject {
 public:
+    // 加入這個函數，讓 App 可以檢查塔是否被選中
+    bool GetIsSelected() const { return m_IsSelected; }
+
+    // 順便確認是否有 IsUpgradeClicked
+    bool IsUpgradeClicked(const glm::vec2& mousePos) const {
+        if (!m_IsSelected || m_Level >= m_MaxLevel) return false;
+        glm::vec2 upgradeBtnPos = m_Transform.translation + glm::vec2(0.0f, 50.0f);
+        return glm::distance(mousePos, upgradeBtnPos) < 25.0f;
+    }
     struct TowerStats {
         float range;
         float attackInterval;
@@ -57,47 +67,67 @@ public:
         if (m_UpgradeMenuImage->GetSize().x == 0) {
             LOG_DEBUG("Failed to load Upgrade Menu Image! Check path.");
         }
+        // 增加升級與出售圖示 (請確保路徑正確)
+        m_UpgradeIcon = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/Start/20.png");
+        m_SellIcon = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/Start/19.png");
     }
 
     virtual ~Tower() = default;
+    //檢查有沒有點到升級塔
+    bool IsUpgradeClicked(const glm::vec2& mousePos) {
+        if (!m_IsSelected || m_Level >= m_MaxLevel) return false;
+
+        // 計算升級按鈕的中心位置 (需與 Draw() 裡的位移一致)
+        glm::vec2 upgradeBtnPos = m_Transform.translation + glm::vec2(0.0f, 60.0f);
+
+        // 簡單的圓形或方形碰撞檢查 (假設按鈕大小約 40x40)
+        return glm::distance(mousePos, upgradeBtnPos) < 25.0f;
+    }
+
+    // 取得當前升級所需費用
+    int GetUpgradeCost() const { return m_Cost; }
 
     // 移除 override，因為報錯顯示父類別可能沒有 virtual Draw() 或簽名不符
     // 我們手動呼叫它來維持本體的繪製
     virtual void Draw() {
-        if (m_IsSelected) {
-            // --- 1. 繪製範圍指示器 (藍圈) ---
-            // 這個縮放是正確的，因為範圍圈必須跟隨 m_Range
-            if (m_RangeIndicatorImage) {
-                Util::Transform indicatorTransform;
-                indicatorTransform.translation = m_Transform.translation;
+        if (!m_IsSelected) return;
 
-                float originalRadius = 125.0f;
-                float scale = m_Range / originalRadius;
-                indicatorTransform.scale = {scale, scale}; // 這裡會變動
+        // 1. 範圍圈 (底層)
+        if (m_RangeIndicatorImage) {
+            float scale = m_Range / 125.0f;
+            m_RangeIndicatorImage->Draw(Util::ConvertToUniformBufferData(
+                Util::Transform{m_Transform.translation, 0, {scale, scale}},
+                m_RangeIndicatorImage->GetSize(), 5.0f));
+        }
 
-                auto indicatorData = Util::ConvertToUniformBufferData(
-                    indicatorTransform,
-                    m_RangeIndicatorImage->GetSize(),
-                    5.0f // 最底層
-                );
-                m_RangeIndicatorImage->Draw(indicatorData);
-            }
+        // 2. 升級選單圓環 (中層)
+        if (m_UpgradeMenuImage) {
+            m_UpgradeMenuImage->Draw(Util::ConvertToUniformBufferData(
+                Util::Transform{m_Transform.translation + glm::vec2(0, 5), 0, {1.1f, 1.1f}},
+                m_UpgradeMenuImage->GetSize(), 16.0f));
+        }
 
-            // --- 2. 繪製升級選單 (UI 圓環) ---
-            // 注意：這裡必須使用獨立的 Transform 且 scale 設為固定值
-            if (m_UpgradeMenuImage) {
-                Util::Transform menuTransform;
-                menuTransform.translation = m_Transform.translation + glm::vec2(0.0f, 5.0f);;
+        // 3. 升級標誌 (上方)
+        if (m_UpgradeIcon && m_Level < m_MaxLevel) {
+            m_UpgradeIcon->Draw(Util::ConvertToUniformBufferData(
+                Util::Transform{m_Transform.translation + glm::vec2(0.0f, 60.0f), 0, {0.8f, 0.8f}},
+                m_UpgradeIcon->GetSize(), 18.0f));
+        }
 
-                // 強制設為 1.0f，不使用任何與 m_Range 相關的變數
-                menuTransform.scale = {1.1, 1.1f};
+        // 4. 出售標誌 (下方)
+        if (m_SellIcon) {
+            m_SellIcon->Draw(Util::ConvertToUniformBufferData(
+                Util::Transform{m_Transform.translation + glm::vec2(0.0f, -55.0f), 0, {0.8f, 0.8f}},
+                m_SellIcon->GetSize(), 18.0f));
+        }
 
-                auto menuData = Util::ConvertToUniformBufferData(
-                    menuTransform,
-                    m_UpgradeMenuImage->GetSize(),
-                    16.0f // 提高 ZIndex 確保在最前方
-                );
-                m_UpgradeMenuImage->Draw(menuData);
+        // 5. 價格文字 (最頂層)
+        if (m_CostText != nullptr) {
+            auto textSize = m_CostText->GetSize();
+            if (textSize.x > 0) {
+                m_CostText->Draw(Util::ConvertToUniformBufferData(
+                    Util::Transform{m_Transform.translation + glm::vec2(5.0f, 40.0f), 0, {0.5f, 0.5f}},
+                    textSize, 19.0f));
             }
         }
     }
@@ -129,16 +159,27 @@ public:
     virtual void UpdateAnimation() {}
 
 protected:
+    std::shared_ptr<Util::Text> m_CostText;
+    std::string m_FontPath = "../PTSD/assets/sprites/images/fonts/7_Comic Book.ttf"; // 改成你的路徑
+    std::shared_ptr<Util::Image> m_UpgradeIcon;
+    std::shared_ptr<Util::Image> m_SellIcon;
     int m_Level = 1;
     const int m_MaxLevel = 3;
 
+    void UpdateCostText() {
+        std::string displayStr = (m_Level < m_MaxLevel) ? std::to_string(m_Cost) : "MAX";
+        // 建立文字物件：路徑, 字體大小, 內容, 顏色
+        m_CostText = std::make_shared<Util::Text>(m_FontPath, 20, displayStr, Util::Color::FromName(Util::Colors::YELLOW));
+    }
     // 通用數值應用：由子類別呼叫
     void ApplyBaseStats(const TowerStats& stats) {
         m_Range = stats.range;
-        m_Cooldown = stats.attackInterval; // 對應你原本的 m_Cooldown
+        m_Cooldown = stats.attackInterval;
         m_Damage = stats.damage;
         m_Cost = stats.upgradeCost;
         SetDrawable(std::make_shared<Util::Image>(stats.baseSpritePath));
+
+        UpdateCostText(); // 數值改變時同步更新文字內容
     }
     std::shared_ptr<Enemy> FindTarget(const std::vector<std::shared_ptr<Enemy>>& enemies) {
         std::shared_ptr<Enemy> bestTarget = nullptr;
