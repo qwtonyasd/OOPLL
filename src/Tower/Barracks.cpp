@@ -30,12 +30,13 @@ Barracks::Barracks(glm::vec2 pos, const std::vector<glm::vec2>& route)
 void Barracks::Update(std::vector<std::shared_ptr<Enemy>>& enemies,
                       [[maybe_unused]] std::vector<std::shared_ptr<Projectile>>& projectiles) {
     float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
+    if (dt > 0.1f) dt = 0.016f;
 
-    // 1. 小兵復活邏輯
+    // 1. 小兵更新與死掉復活邏輯
     for (int i = 0; i < m_MaxSoldiers; ++i) {
         auto& slot = m_Slots[i];
         if (slot.soldier) {
-            slot.soldier->Update(enemies);
+            slot.soldier->Update(enemies, dt); // 傳入統一的 dt
             if (slot.soldier->GetHP() <= 0 && slot.soldier->IsDeadAnimationFinished()) {
                 slot.soldier->ReleaseEnemy();
                 slot.soldier = nullptr;
@@ -44,7 +45,6 @@ void Barracks::Update(std::vector<std::shared_ptr<Enemy>>& enemies,
             }
         } else if (slot.isWaitingForRespawn) {
             slot.respawnTimer += dt;
-            // 復活冷卻時間隨等級縮短 (m_Cooldown)
             if (slot.respawnTimer >= m_Cooldown) {
                 SpawnSoldier(i);
                 slot.isWaitingForRespawn = false;
@@ -52,7 +52,7 @@ void Barracks::Update(std::vector<std::shared_ptr<Enemy>>& enemies,
         }
     }
 
-    // 2. 攔截敵人邏輯
+    // 2. 僅下達攔截命令
     glm::vec2 rallyPos = MapData::GetBaseRallyPoint(m_Transform.translation);
     for (auto& enemy : enemies) {
         if (!enemy || enemy->GetHP() <= 0) continue;
@@ -70,17 +70,45 @@ void Barracks::SpawnSoldier(int slotIndex) {
     glm::vec2 baseRallyPoint = MapData::GetBaseRallyPoint(m_Transform.translation);
     glm::vec2 spawnPos = m_Transform.translation + glm::vec2(0, -10.0f);
 
-    glm::vec2 formationOffset;
-    if (slotIndex == 0)      formationOffset = {0, 0};
-    else if (slotIndex == 1) formationOffset = {-20, -15};
-    else                     formationOffset = {20, -15};
+    glm::vec2 formationOffset = (slotIndex == 0) ? glm::vec2(0, 0) :
+                                (slotIndex == 1) ? glm::vec2(-20, -15) : glm::vec2(20, -15);
 
-    // 建立小兵時傳入當前等級的血量與傷害
+    // 1. 在兵營打包給步兵的資源
+    Soldier::SoldierConfig genericInfantry;
+
+    // 根據目前的等級（m_Level）動態改變小兵的造型讀取資料夾與動畫影格
+    if (m_Level == 1) {
+        genericInfantry.spriteRootPath = "../PTSD/assets/sprites/images/BarracksTower/Soldier/";
+        genericInfantry.walkStart = 1;  genericInfantry.walkEnd = 6;
+        genericInfantry.atkStart = 7;   genericInfantry.atkEnd = 17;
+        genericInfantry.deadStart = 18; genericInfantry.deadEnd = 24;
+    }
+    else if (m_Level == 2) {
+        genericInfantry.spriteRootPath = "../PTSD/assets/sprites/images/BarracksTower/TowerLevel2/Soldier/";
+        // 對接二級小兵的 15 張圖配置
+        genericInfantry.walkStart = 1;  genericInfantry.walkEnd = 6;   // 1 ~ 6 走路
+        genericInfantry.atkStart = 7;   genericInfantry.atkEnd = 12;   // 7 ~ 12 攻擊
+        genericInfantry.deadStart = 13; genericInfantry.deadEnd = 15;  // 13 ~ 15 死亡
+    }
+    else { // 等級三
+        genericInfantry.spriteRootPath = "../PTSD/assets/sprites/images/BarracksTower/TowerLevel3/Soldier/";
+        genericInfantry.walkStart = 1;  genericInfantry.walkEnd = 6;
+        genericInfantry.atkStart = 7;   genericInfantry.atkEnd = 12;
+        genericInfantry.deadStart = 13; genericInfantry.deadEnd = 15;
+    }
+
+    genericInfantry.maxHP = m_SoldierHP;
+    genericInfantry.minDamage = m_SoldierDamage - 2;
+    genericInfantry.maxDamage = m_SoldierDamage + 2;
+    genericInfantry.speed = 1.5f;
+    genericInfantry.detectionRange = 80.0f;
+    genericInfantry.meleeRange = 20.0f;
+
+    // 2. 直接生成
     m_Slots[slotIndex].soldier = std::make_shared<Soldier>(
         spawnPos,
         baseRallyPoint + formationOffset,
-        1.5f,        // 移速
-        m_SoldierHP  // 血量
+        genericInfantry
     );
 }
 
@@ -91,12 +119,19 @@ void Barracks::Upgrade() {
         // 套用下一級數據 (金額、範圍、冷卻)
         ApplyBaseStats(m_BarracksStats[m_Level - 1]);
 
+        // 【核心修正】修正結構欄位名稱，即時更新塔本體造型圖片
+        std::string newTowerPath = m_BarracksStats[m_Level - 1].baseSpritePath;
+        SetDrawable(std::make_shared<Util::Image>(newTowerPath));
+
         // 提升小兵基礎能力值
         m_SoldierHP += 20.0f;
         m_SoldierDamage = m_BarracksStats[m_Level - 1].damage;
 
-        // 升級時立即治癒或重生存活的小兵（可選，增加玩家升級感）
+        // 升級時立即重生成活的小兵
         for (int i = 0; i < m_MaxSoldiers; ++i) {
+            if (m_Slots[i].soldier) {
+                m_Slots[i].soldier->ReleaseEnemy();
+            }
             SpawnSoldier(i);
             m_Slots[i].isWaitingForRespawn = false;
         }
@@ -106,17 +141,16 @@ void Barracks::Upgrade() {
 }
 
 void Barracks::Draw() {
-    // 1. 畫父類別的 UI (範圍圈、圓環、110數字、升級/出售圖示)
+    // 1. 畫父類別的 UI (範圍圈、圓環、數字、升級/出售圖示)
     Tower::Draw();
 
-    // 2. 畫塔建築物本體 (確保它被畫出來)
+    // 2. 畫塔建築物本體
     if (m_Visible && m_Drawable) {
-        // 使用與其他塔一致的 ZIndex (例如 15.0f)，確保它在範圍圈之上
         auto data = Util::ConvertToUniformBufferData(m_Transform, m_Drawable->GetSize(), 15.0f);
         m_Drawable->Draw(data);
     }
 
-    // 3. 畫小兵 (確保小兵 ZIndex 高於塔或低於塔，依你喜好)
+    // 3. 畫小兵
     for (int i = 0; i < m_MaxSoldiers; ++i) {
         if (m_Slots[i].soldier) {
             m_Slots[i].soldier->Draw();

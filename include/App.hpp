@@ -15,6 +15,10 @@
 #include "VictoryMenu.hpp"
 #include "Map.hpp"
 
+// --- 新增：法術系統與小兵的標頭檔 ---
+#include "MageSkill\SpellManager.hpp"
+#include "Soldier.hpp"
+
 class App {
 public:
     enum class State { START, UPDATE, END };
@@ -39,10 +43,17 @@ private:
     std::unique_ptr<WorldMap> m_WorldMap;
     std::unique_ptr<VictoryMenu> m_VictoryMenu;
 
+    // --- 新增：主動法術管理器 ---
+    std::unique_ptr<SpellManager> m_SpellManager;
+
     // 物件容器
     std::vector<std::shared_ptr<TowerSlot>> m_TowerSlots;
     std::vector<std::shared_ptr<Enemy>> m_Enemies;
     std::vector<std::shared_ptr<Projectile>> m_Projectiles;
+
+    // --- 新增：存放法術召喚出的民兵/援軍容器 ---
+    std::vector<std::shared_ptr<Soldier>> m_ActiveReinforcements;
+
     std::shared_ptr<TowerSlot> m_SelectedSlot = nullptr;
 
     // 當前關卡的波次配置與暫存

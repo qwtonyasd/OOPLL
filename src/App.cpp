@@ -15,6 +15,9 @@ void App::Start() {
     m_BuildMenu = std::make_unique<BuildMenu>();
     m_Hud = std::make_unique<Hud>();
 
+    // 1. 初始化法術管理器
+    m_SpellManager = std::make_unique<SpellManager>();
+
     m_VictoryMenu = std::make_unique<VictoryMenu>();
     m_Root.AddChild(m_VictoryMenu->GetGameObject());
 
@@ -49,6 +52,7 @@ void App::HandleSelectLevel() {
 void App::HandleGamePlay() {
     auto& gm = GameManager::GetInstance();
     float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
+    if (dt > 0.1f) dt = 0.016f;
     auto currentMap = m_MapManager->GetCurrentMap();
 
     if (m_VictoryMenu->IsVisible()) {
@@ -64,7 +68,8 @@ void App::HandleGamePlay() {
             return;
         }
     } else {
-        // --- 波次邏輯：時間戳記出怪模式 ---
+        m_SpellManager->Update(dt);
+
         int currentWaveIdx = gm.GetCurrentWave() - 1;
         if (currentWaveIdx < static_cast<int>(m_Waves.size())) {
             auto& waveConfig = m_Waves[currentWaveIdx];
@@ -74,33 +79,25 @@ void App::HandleGamePlay() {
                     m_WaveBreakTimer += dt;
                     if (m_WaveBreakTimer >= 3.0f) {
                         m_IsWaveActive = true;
-                        m_WaveTimer = 0.0f;      // 重置時間
+                        m_WaveTimer = 0.0f;
                         m_WaveBreakTimer = 0.0f;
-                        m_PendingSubWaves = waveConfig.subWaves; // 複製配置到暫存
+                        m_PendingSubWaves = waveConfig.subWaves;
                     }
                 }
             } else {
                 m_WaveTimer += dt;
-
-                // 檢查哪些怪物時間到了
                 for (auto it = m_PendingSubWaves.begin(); it != m_PendingSubWaves.end(); ) {
                     if (m_WaveTimer >= it->spawnDelay) {
-                        // 根據路徑索引獲取座標點
                         const auto& route = currentMap->GetRouteByIndex(it->routeIndex);
-
-                        // 生成怪物
                         for (auto& enemyType : it->enemies) {
                             m_Enemies.push_back(EnemyFactory::Create(enemyType, route));
                         }
-
-                        // 生完後從待處理清單移除
                         it = m_PendingSubWaves.erase(it);
                     } else {
                         ++it;
                     }
                 }
 
-                // 如果怪生完了且畫面上清空了，就進入下一波
                 if (m_PendingSubWaves.empty() && m_Enemies.empty()) {
                     m_IsWaveActive = false;
                     if (gm.GetCurrentWave() < static_cast<int>(m_Waves.size())) {
@@ -112,8 +109,21 @@ void App::HandleGamePlay() {
             }
         }
 
-        // --- 更新與碰撞 ---
         m_TowerManager->UpdateAll(m_Enemies, m_Projectiles);
+
+        // 更新援軍小兵 (已修正參數)
+        for (auto it = m_ActiveReinforcements.begin(); it != m_ActiveReinforcements.end(); ) {
+            auto& soldier = *it;
+            if (soldier) {
+                soldier->Update(m_Enemies, dt);
+                if (soldier->GetHP() <= 0 && soldier->IsDeadAnimationFinished()) {
+                    soldier->ReleaseEnemy();
+                    it = m_ActiveReinforcements.erase(it);
+                    continue;
+                }
+            }
+            ++it;
+        }
 
         for (auto it = m_Projectiles.begin(); it != m_Projectiles.end(); ) {
             (*it)->Update();
@@ -121,8 +131,10 @@ void App::HandleGamePlay() {
             else ++it;
         }
 
+        // 更新敵人 (已修正參數)
         for (auto it = m_Enemies.begin(); it != m_Enemies.end(); ) {
-            (*it)->Update();
+            (*it)->Update(m_Enemies, dt); // 補上了 m_Enemies 與 dt
+
             if ((*it)->ReachedEnd()) {
                 gm.TakeDamage(1);
                 it = m_Enemies.erase(it);
@@ -134,82 +146,101 @@ void App::HandleGamePlay() {
             }
         }
 
-        // --- 交互邏輯 (滑鼠點擊、蓋塔、選單) ---
-glm::vec2 mousePos = Util::Input::GetCursorPosition();
-auto& gm = GameManager::GetInstance();
+        glm::vec2 mousePos = Util::Input::GetCursorPosition();
 
-if (m_BuildMenu->IsVisible()) {
-    Tower::Type selectedType = m_BuildMenu->Update();
-    if (selectedType != Tower::Type::NONE) {
-        if (m_SelectedSlot) {
-            int cost = Tower::GetBaseCost(selectedType);
-            if (gm.SpendMoney(cost)) {
-                m_TowerManager->AddTower(selectedType, m_SelectedSlot->GetPosition(), {});
-                m_SelectedSlot->SetOccupied(true);
+        if (Util::Input::IsKeyDown(Util::Keycode::NUM_1)) m_SpellManager->SelectFireball();
+        if (Util::Input::IsKeyDown(Util::Keycode::NUM_2)) m_SpellManager->SelectReinforce();
+
+        if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_RB)) {
+            m_SpellManager->CancelSelection();
+        }
+
+        if (m_BuildMenu->IsVisible()) {
+            Tower::Type selectedType = m_BuildMenu->Update();
+            if (selectedType != Tower::Type::NONE) {
+                if (m_SelectedSlot) {
+                    int cost = Tower::GetBaseCost(selectedType);
+                    if (gm.SpendMoney(cost)) {
+                        m_TowerManager->AddTower(selectedType, m_SelectedSlot->GetPosition(), {});
+                        m_SelectedSlot->SetOccupied(true);
+                    }
+                }
+                m_BuildMenu->SetVisible(false);
+                m_SelectedSlot = nullptr;
             }
-        }
-        m_BuildMenu->SetVisible(false);
-        m_SelectedSlot = nullptr;
-    }
-    else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-        if (glm::distance(mousePos, m_BuildMenu->GetTransform().translation) > 100.0f) {
-            m_BuildMenu->SetVisible(false);
-            m_SelectedSlot = nullptr;
-        }
-    }
-} // <--- 這是 m_BuildMenu->IsVisible() 的結尾，請檢查有沒有漏掉這顆
-
-else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-    bool upgradeHandled = false;
-
-    // 1. 檢查升級點擊
-    for (auto& tower : m_TowerManager->GetTowers()) {
-        if (tower->GetIsSelected() && tower->IsUpgradeClicked(mousePos)) {
-            int cost = tower->GetUpgradeCost();
-            if (gm.SpendMoney(cost)) {
-                tower->Upgrade();
-                LOG_INFO("Upgrade Successful!");
-            }
-            upgradeHandled = true;
-            break;
-        }
-    }
-
-    // 2. 如果沒處理升級，才處理塔位點擊或選取
-    if (!upgradeHandled) {
-        if (!m_TowerManager->HandleClick(mousePos)) {
-            bool hitSlot = false;
-            for (auto& slot : m_TowerSlots) {
-                if (!slot->IsOccupied() && glm::distance(mousePos, slot->GetPosition()) < 50.0f) {
-                    m_SelectedSlot = slot;
-                    m_BuildMenu->SetPosition(slot->GetPosition());
-                    m_BuildMenu->SetVisible(true);
-                    m_TowerManager->ClearSelection();
-                    hitSlot = true;
-                    break;
+            else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+                if (glm::distance(mousePos, m_BuildMenu->GetTransform().translation) > 100.0f) {
+                    m_BuildMenu->SetVisible(false);
+                    m_SelectedSlot = nullptr;
                 }
             }
-            if (!hitSlot) {
-                m_TowerManager->ClearSelection();
+        }
+        else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+            SpellManager::SpellType clickedSpell = m_Hud->HandleClick(mousePos);
+
+            if (clickedSpell != SpellManager::SpellType::NONE) {
+                if (clickedSpell == SpellManager::SpellType::FIREBALL) {
+                    m_SpellManager->SelectFireball();
+                }
+                else if (clickedSpell == SpellManager::SpellType::REINFORCE) {
+                    m_SpellManager->SelectReinforce();
+                }
+            }
+            else if (m_SpellManager->GetSelectedSpell() != SpellManager::SpellType::NONE) {
+                m_SpellManager->CastCurrentSpell(mousePos, m_Enemies, m_ActiveReinforcements);
+            }
+            else {
+                bool upgradeHandled = false;
+                for (auto& tower : m_TowerManager->GetTowers()) {
+                    if (tower->GetIsSelected() && tower->IsUpgradeClicked(mousePos)) {
+                        int cost = tower->GetUpgradeCost();
+                        if (gm.SpendMoney(cost)) {
+                            tower->Upgrade();
+                        }
+                        upgradeHandled = true;
+                        break;
+                    }
+                }
+
+                if (!upgradeHandled) {
+                    if (!m_TowerManager->HandleClick(mousePos)) {
+                        bool hitSlot = false;
+                        for (auto& slot : m_TowerSlots) {
+                            if (!slot->IsOccupied() && glm::distance(mousePos, slot->GetPosition()) < 50.0f) {
+                                m_SelectedSlot = slot;
+                                m_BuildMenu->SetPosition(slot->GetPosition());
+                                m_BuildMenu->SetVisible(true);
+                                m_TowerManager->ClearSelection();
+                                hitSlot = true;
+                                break;
+                            }
+                        }
+                        if (!hitSlot) {
+                            m_TowerManager->ClearSelection();
+                        }
+                    }
+                }
             }
         }
     }
-} // <--- 這是 else if (MOUSE_LB) 的結尾
-    }
 
-    // --- 渲染 ---
     m_MapManager->Draw();
     for (auto& slot : m_TowerSlots) slot->Draw();
     m_TowerManager->DrawAll();
+
+    for (auto& soldier : m_ActiveReinforcements) {
+        if (soldier) soldier->Draw();
+    }
+
     for (auto& enemy : m_Enemies) enemy->Draw();
     for (auto& proj : m_Projectiles) proj->Draw();
     if (m_BuildMenu->IsVisible()) m_BuildMenu->Draw();
-    if (m_Hud) m_Hud->Draw();
+
+    if (m_Hud) m_Hud->Draw(m_SpellManager);
     if (m_VictoryMenu->IsVisible()) m_VictoryMenu->Draw();
 
     if (Util::Input::IsKeyDown(Util::Keycode::BACKSPACE)) m_IsInGame = false;
 }
-
 void App::ChangeLevel(int levelId) {
     m_CurrentLevelID = levelId;
     auto newMap = MapFactory::CreateLevel(levelId);
@@ -228,6 +259,10 @@ void App::ChangeLevel(int levelId) {
     m_Enemies.clear();
     m_TowerSlots.clear();
     m_PendingSubWaves.clear();
+
+    // 換關卡時，清空場上殘留的法術小兵與選取狀態
+    m_ActiveReinforcements.clear();
+    m_SpellManager->CancelSelection();
 
     for (const auto& pos : newMap->GetTowerSlots()) {
         m_TowerSlots.push_back(std::make_shared<TowerSlot>(pos));

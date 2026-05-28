@@ -2,41 +2,42 @@
 #define UNIT_HPP
 
 #include <vector>
+#include <memory> // 必須包含以使用 std::shared_ptr
 #include <glm/glm.hpp>
 #include "Util/GameObject.hpp"
 #include "Util/Time.hpp"
 #include "Util/Image.hpp"
 #include "Util/TransformUtils.hpp"
 
+// 前向宣告，避免循環引用
+class Enemy;
+
 class Unit : public Util::GameObject {
 public:
     Unit(const std::vector<glm::vec2>& path, float speed, float hp)
         : m_Path(path), m_Speed(speed), m_HP(hp), m_MaxHP(hp) {
         if (!m_Path.empty()) m_Transform.translation = m_Path[0];
-        m_ZIndex = 15.0f; // 確保單位有基本的 ZIndex
+        m_ZIndex = 15.0f;
     }
 
     virtual ~Unit() = default;
-    virtual void Update() = 0;
+
+    // 關鍵修正：將 Update 參數化以匹配所有子類別
+    virtual void Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) = 0;
     virtual void Draw() = 0;
 
     float GetHP() const { return m_HP; }
 
 protected:
-    // 將預設值從 30.0f 改為更小的數值，例如 15.0f 或更低
-    // 如果想要更貼近，可以嘗試 10.0f 或 5.0f
     void DrawHealthBar(float yOffset = 15.0f) {
         if (m_HP <= 0) return;
 
-        // 確保比率正確
         float safeMax = (m_MaxHP <= 0) ? m_HP : m_MaxHP;
         float ratio = m_HP / safeMax;
         if (ratio > 1.0f) ratio = 1.0f;
 
-        // --- 以下完全維持你要求的原始設定，不作任何變更 ---
         float bgScaleX = 0.7f;
         float bgScaleY = 0.7f;
-
         float fgScaleX = 1.2f;
         float fgScaleY = 1.2f;
 
@@ -45,7 +46,6 @@ protected:
 
         if (!bgImg || !fgImg) return;
 
-        // 1. 繪製紅色底條
         Util::Transform bgTransform;
         bgTransform.translation = m_Transform.translation + glm::vec2(0, yOffset);
         bgTransform.scale = {bgScaleX, bgScaleY};
@@ -53,13 +53,10 @@ protected:
         auto bgData = Util::ConvertToUniformBufferData(bgTransform, bgImg->GetSize(), m_ZIndex + 0.1f);
         bgImg->Draw(bgData);
 
-        // 2. 繪製綠色血條
         Util::Transform fgTransform;
         float currentFgScaleX = fgScaleX * ratio;
-
         float bgRealWidth = bgImg->GetSize().x * bgScaleX;
         float fgRealWidth = fgImg->GetSize().x * currentFgScaleX;
-
         float offsetX = (bgRealWidth - fgRealWidth) / 2.0f;
 
         fgTransform.translation = bgTransform.translation - glm::vec2(offsetX, 0);

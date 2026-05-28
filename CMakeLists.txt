@@ -67,6 +67,10 @@ add_executable(${PROJECT_NAME}
         src/VictoryMenu.cpp
         src/MapFactory.cpp
         include/Shaman.hpp
+        include/MageSkill/Spell.hpp
+        include/MageSkill/ReinforcementSpell.hpp
+        include/MageSkill/FireballSpell.hpp
+        include/MageSkill/SpellManager.hpp
 )
 
 if(MSVC)
