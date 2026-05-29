@@ -195,61 +195,265 @@ std::shared_ptr<Map> MapFactory::CreateLevel(int levelId) {
         config.waves.push_back(w11);
     }
     // ==================== Level 4 ====================
+    // ==================== Level 4 ====================
     else if (levelId == 4) {
-        config.initialMoney = 280;
+        config.initialMoney = 680; // 初始金額改為 680
         config.imagePath = "../PTSD/assets/sprites/images/Map/4.png";
         config.routes = {
-            { {-72, -308}, {-68, -294}, {-65, -261}, {-64, -233}, {-65, -205}, {-67, -158}, {-88, -137}, {-117, -115}, {-145, -87}, {-171, -66}, {-198, -41}, {-225, -11}, {-239, 23}, {-243, 48}, {-247, 81}, {-237, 120}, {-220, 147}, {-195, 165}, {-153, 192}, {-138, 200}, {-109, 210}, {-85, 216}, {-50, 222}, {-17, 229}, {6, 232}, {30, 250}, {32, 270}, {33, 293}, {33, 330} },
-            {{-34, -316}, {-36, -307}, {-39, -286}, {-39, -261}, {-38, -242}, {-38, -218}, {-39, -199}, {-41, -177}, {-42, -157}, {-49, -138}, {-67, -122}, {-94, -104}, {-116, -87}, {-133, -68}, {-149, -52}, {-173, -32}, {-188, -17}, {-200, -2}, {-214, 18}, {-226, 44}, {-232, 65}, {-229, 89}, {-221, 117}, {-211, 134}, {-196, 152}, {-176, 168}, {-149, 181}, {-112, 191}, {-82, 201}, {-41, 205}, {5, 209}, {29, 214}, {50, 226}, {61, 246}, {64, 270}, {65, 328} },
-            { {-70, -291}, {-68, -262}, {-65, -240}, {-67, -212}, {-67, -176}, {-60, -144}, {-28, -131}, {17, -130}, {50, -130}, {92, -131}, {138, -125}, {180, -120}, {217, -106}, {248, -75}, {264, -35}, {267, 7}, {253, 45}, {222, 94}, {203, 113}, {181, 131}, {158, 148}, {139, 164}, {123, 176}, {103, 188}, {70, 204}, {48, 218}, {35, 229}, {30, 245}, {32, 281}, {32, 325} },
-            { {-41, -316}, {-44, -289}, {-46, -258}, {-46, -228}, {-48, -201}, {-43, -182}, {-26, -164}, {3, -155}, {37, -151}, {67, -150}, {97, -149}, {133, -148}, {166, -143}, {196, -133}, {224, -121}, {246, -103}, {265, -76}, {273, -52}, {280, -27}, {281, 1}, {275, 26}, {264, 58}, {243, 93}, {223, 111}, {204, 130}, {184, 147}, {165, 162}, {146, 173}, {110, 196}, {84, 207}, {70, 222}, {57, 248},{65, 328} }
+            { {-72, -308}, {-68, -294}, {-65, -261}, {-64, -233}, {-65, -205}, {-67, -158}, {-88, -137}, {-117, -115}, {-145, -87}, {-171, -66}, {-198, -41}, {-225, -11}, {-239, 23}, {-243, 48}, {-247, 81}, {-237, 120}, {-220, 147}, {-195, 165}, {-153, 192}, {-138, 200}, {-109, 210}, {-85, 216}, {-50, 222}, {-17, 229}, {6, 232}, {30, 250}, {32, 270}, {33, 293}, {33, 330} }, // 索引 0 (左路1)
+            { {-34, -316}, {-36, -307}, {-39, -286}, {-39, -261}, {-38, -242}, {-38, -218}, {-39, -199}, {-41, -177}, {-42, -157}, {-49, -138}, {-67, -122}, {-94, -104}, {-116, -87}, {-133, -68}, {-149, -52}, {-173, -32}, {-188, -17}, {-200, -2}, {-214, 18}, {-226, 44}, {-232, 65}, {-229, 89}, {-221, 117}, {-211, 134}, {-196, 152}, {-176, 168}, {-149, 181}, {-112, 191}, {-82, 201}, {-41, 205}, {5, 209}, {29, 214}, {50, 226}, {61, 246}, {64, 270}, {65, 328} }, // 索引 1 (左路2)
+            { {-70, -291}, {-68, -262}, {-65, -240}, {-67, -212}, {-67, -176}, {-60, -144}, {-28, -131}, {17, -130}, {50, -130}, {92, -131}, {138, -125}, {180, -120}, {217, -106}, {248, -75}, {264, -35}, {267, 7}, {253, 45}, {222, 94}, {203, 113}, {181, 131}, {158, 148}, {139, 164}, {123, 176}, {103, 188}, {70, 204}, {48, 218}, {35, 229}, {30, 245}, {32, 281}, {32, 325} },  // 索引 2 (右路1)
+            { {-41, -316}, {-44, -289}, {-46, -258}, {-46, -228}, {-48, -201}, {-43, -182}, {-26, -164}, {3, -155}, {37, -151}, {67, -150}, {97, -149}, {133, -148}, {166, -143}, {196, -133}, {224, -121}, {246, -103}, {265, -76}, {273, -52}, {280, -27}, {281, 1}, {275, 26}, {264, 58}, {243, 93}, {223, 111}, {204, 130}, {184, 147}, {165, 162}, {146, 173}, {110, 196}, {84, 207}, {70, 222}, {57, 248},{65, 328} }   // 索引 3 (右路2)
         };
         config.towerSlotPositions = { {-265, -51}, {110, -201},{239, -180}, {-27, -85},{39, -97},{109, -94},{191, -56},{197, 16},{161, 81},{53, 163},{-16, 164},{-86, 152},{-137, 118},{-160, 47},{-137, 1} };
 
-        auto addW4 = [&](const std::vector<Enemy::Type>& types, float interval) {
-            WaveConfig wave; float d = 0;
-            for (auto t : types) {
-                wave.subWaves.emplace_back(randomRoute(0, 4), std::vector<Enemy::Type>{t}, d);
-                d += interval;
-            }
-            config.waves.push_back(wave);
-        };
-        addW4(std::vector<Enemy::Type>(15, Enemy::Type::GOBLIN), 0.6f);
-        addW4({Enemy::Type::ORC, Enemy::Type::ORC, Enemy::Type::ORC, Enemy::Type::ORC}, 1.4f);
+        // ==================== WAVE 1 ====================
+        // 左路 10 Goblin 3 Orc | 右路 10 Goblin 3 Orc
+        WaveConfig w1; float d1_L = 0.0f, d1_R = 0.0f;
+        for (int i = 0; i < 10; ++i) { w1.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::GOBLIN}, d1_L); d1_L += 0.6f; }
+        for (int i = 0; i < 3; ++i)  { w1.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d1_L);    d1_L += 1.2f; }
+        for (int i = 0; i < 10; ++i) { w1.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::GOBLIN}, d1_R); d1_R += 0.6f; }
+        for (int i = 0; i < 3; ++i)  { w1.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d1_R);    d1_R += 1.2f; }
+        config.waves.push_back(w1);
 
-        WaveConfig w3; float d3 = 0;
-        for(int i=0; i<20; i++) { w3.subWaves.emplace_back(randomRoute(0, 4), std::vector<Enemy::Type>{Enemy::Type::WULF}, d3); d3 += 0.4f; }
+        // ==================== WAVE 2 ====================
+        // 左路 10 Goblin 4 Orc | 右路 10 Goblin 4 Orc
+        WaveConfig w2; float d2_L = 0.0f, d2_R = 0.0f;
+        for (int i = 0; i < 10; ++i) { w2.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::GOBLIN}, d2_L); d2_L += 0.6f; }
+        for (int i = 0; i < 4; ++i)  { w2.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d2_L);    d2_L += 1.2f; }
+        for (int i = 0; i < 10; ++i) { w2.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::GOBLIN}, d2_R); d2_R += 0.6f; }
+        for (int i = 0; i < 4; ++i)  { w2.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d2_R);    d2_R += 1.2f; }
+        config.waves.push_back(w2);
+
+        // ==================== WAVE 3 ====================
+        // 左路 20 Goblin 1 Shaman | 右路 1 Shaman 5 Orc
+        WaveConfig w3; float d3_L = 0.0f, d3_R = 0.0f;
+        for (int i = 0; i < 20; ++i) { w3.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::GOBLIN}, d3_L); d3_L += 0.5f; }
+        w3.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d3_L);
+        w3.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d3_R); d3_R += 1.5f;
+        for (int i = 0; i < 5; ++i)  { w3.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d3_R);    d3_R += 1.2f; }
         config.waves.push_back(w3);
+
+        // ==================== WAVE 4 ====================
+        // 左路 20 Goblin 1 Shaman | 右路 1 Shaman 5 Orc
+        WaveConfig w4; float d4_L = 0.0f, d4_R = 0.0f;
+        for (int i = 0; i < 20; ++i) { w4.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::GOBLIN}, d4_L); d4_L += 0.5f; }
+        w4.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d4_L);
+        w4.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d4_R); d4_R += 1.5f;
+        for (int i = 0; i < 5; ++i)  { w4.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d4_R);    d4_R += 1.2f; }
+        config.waves.push_back(w4);
+
+        // ==================== WAVE 5 ====================
+        // 左路 20 Goblin | 右路 2 Shaman 9 Orc
+        WaveConfig w5; float d5_L = 0.0f, d5_R = 0.0f;
+        for (int i = 0; i < 20; ++i) { w5.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::GOBLIN}, d5_L); d5_L += 0.5f; }
+        for (int i = 0; i < 2; ++i)  { w5.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d5_R); d5_R += 1.5f; }
+        for (int i = 0; i < 9; ++i)  { w5.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d5_R);    d5_R += 1.0f; }
+        config.waves.push_back(w5);
+
+        // ==================== WAVE 6 ====================
+        // 左路 3 Bandit | 右路 6 Bandit
+        WaveConfig w6; float d6_L = 0.0f, d6_R = 0.0f;
+        for (int i = 0; i < 3; ++i)  { w6.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d6_L); d6_L += 1.0f; }
+        for (int i = 0; i < 6; ++i)  { w6.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d6_R); d6_R += 0.8f; }
+        config.waves.push_back(w6);
+
+        // ==================== WAVE 7 ====================
+        // 左路 9 Wulf 4 Bandit | 右路 9 Wulf 4 Bandit
+        WaveConfig w7; float d7_L = 0.0f, d7_R = 0.0f;
+        for (int i = 0; i < 9; ++i)  { w7.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::WULF}, d7_L);   d7_L += 0.4f; }
+        for (int i = 0; i < 4; ++i)  { w7.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d7_L); d7_L += 1.0f; }
+        for (int i = 0; i < 9; ++i)  { w7.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::WULF}, d7_R);   d7_R += 0.4f; }
+        for (int i = 0; i < 4; ++i)  { w7.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d7_R); d7_R += 1.0f; }
+        config.waves.push_back(w7);
+
+        // ==================== WAVE 8 ====================
+        // 左路 5 Orc 2 Shaman | 右路 1 Ogre 2 Shaman
+        WaveConfig w8; float d8_L = 0.0f, d8_R = 0.0f;
+        for (int i = 0; i < 5; ++i)  { w8.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d8_L);    d8_L += 1.0f; }
+        for (int i = 0; i < 2; ++i)  { w8.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d8_L); d8_L += 1.2f; }
+        w8.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::OGRE}, d8_R);  d8_R += 2.0f;
+        for (int i = 0; i < 2; ++i)  { w8.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d8_R); d8_R += 1.2f; }
+        config.waves.push_back(w8);
+
+        // ==================== WAVE 9 ====================
+        // 左路 8 Bandit 7 Orc | 右路 8 Bandit 7 Orc
+        WaveConfig w9; float d9_L = 0.0f, d9_R = 0.0f;
+        for (int i = 0; i < 8; ++i)  { w9.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d9_L); d9_L += 0.8f; }
+        for (int i = 0; i < 7; ++i)  { w9.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d9_L);    d9_L += 1.0f; }
+        for (int i = 0; i < 8; ++i)  { w9.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d9_R); d9_R += 0.8f; }
+        for (int i = 0; i < 7; ++i)  { w9.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d9_R);    d9_R += 1.0f; }
+        config.waves.push_back(w9);
+
+        // ==================== WAVE 10 ====================
+        // 左路 4 Orc 6 Bandit 3 Shaman | 右路 4 Orc 6 Bandit 3 Shaman
+        WaveConfig w10; float d10_L = 0.0f, d10_R = 0.0f;
+        for (int i = 0; i < 4; ++i)  { w10.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d10_L);    d10_L += 1.0f; }
+        for (int i = 0; i < 6; ++i)  { w10.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d10_L); d10_L += 0.7f; }
+        for (int i = 0; i < 3; ++i)  { w10.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d10_L); d10_L += 1.2f; }
+        for (int i = 0; i < 4; ++i)  { w10.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d10_R);    d10_R += 1.0f; }
+        for (int i = 0; i < 6; ++i)  { w10.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d10_R); d10_R += 0.7f; }
+        for (int i = 0; i < 3; ++i)  { w10.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d10_R); d10_R += 1.2f; }
+        config.waves.push_back(w10);
+
+        // ==================== WAVE 11 ====================
+        // 左路 4 Brigand | 右路 4 Brigand
+        WaveConfig w11; float d11_L = 0.0f, d11_R = 0.0f;
+        for (int i = 0; i < 4; ++i)  { w11.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d11_L); d11_L += 1.4f; }
+        for (int i = 0; i < 4; ++i)  { w11.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d11_R); d11_R += 1.4f; }
+        config.waves.push_back(w11);
+
+        // ==================== WAVE 12 ====================
+        // 左路 8 Bandit 4 Brigand 3 Shaman | 右路 8 Bandit 4 Brigand 3 Shaman
+        WaveConfig w12; float d12_L = 0.0f, d12_R = 0.0f;
+        for (int i = 0; i < 8; ++i)  { w12.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d12_L);  d12_L += 0.7f; }
+        for (int i = 0; i < 4; ++i)  { w12.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d12_L); d12_L += 1.2f; }
+        for (int i = 0; i < 3; ++i)  { w12.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d12_L);  d12_L += 1.2f; }
+        for (int i = 0; i < 8; ++i)  { w12.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d12_R);  d12_R += 0.7f; }
+        for (int i = 0; i < 4; ++i)  { w12.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d12_R); d12_R += 1.2f; }
+        for (int i = 0; i < 3; ++i)  { w12.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d12_R);  d12_R += 1.2f; }
+        config.waves.push_back(w12);
+
+        // ==================== WAVE 13 ====================
+        // 左路 6 Bandit 6 Brigand 2 Shaman | 右路 6 Bandit 6 Brigand 2 Shaman
+        WaveConfig w13; float d13_L = 0.0f, d13_R = 0.0f;
+        for (int i = 0; i < 6; ++i)  { w13.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d13_L);  d13_L += 0.7f; }
+        for (int i = 0; i < 6; ++i)  { w13.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d13_L); d13_L += 1.1f; }
+        for (int i = 0; i < 2; ++i)  { w13.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d13_L);  d13_L += 1.2f; }
+        for (int i = 0; i < 6; ++i)  { w13.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d13_R);  d13_R += 0.7f; }
+        for (int i = 0; i < 6; ++i)  { w13.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d13_R); d13_R += 1.1f; }
+        for (int i = 0; i < 2; ++i)  { w13.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::SHAMAN}, d13_R);  d13_R += 1.2f; }
+        config.waves.push_back(w13);
     }
     // ==================== Level 5 ====================
+    // ==================== Level 5 ====================
     else if (levelId == 5) {
-        config.initialMoney = 300;
+        config.initialMoney = 700; // 初始金額改為 700
         config.imagePath = "../PTSD/assets/sprites/images/Map/5.png";
         config.routes = {
-            {{20, -306}, {19, -287}, {22, -262}, {19, -236}, {15, -208}, {6, -176}, {-12, -159}, {-38, -143}, {-63, -135}, {-87, -130}, {-109, -126}, {-138, -119}, {-178, -111}, {-202, -102}, {-228, -83}, {-250, -40}, {-249, -11}, {-242, 20}, {-228, 47}, {-213, 69}, {-196, 84}, {-179, 97}, {-157, 109}, {-135, 120}, {-115, 128}, {-93, 136}, {-63, 143}, {-37, 147}, {-11, 151}, {18, 154}, {37, 156}, {60, 164}, {79, 171}, {99, 184}, {117, 204}, {129, 223}, {134, 243}, {143, 279}, {149, 325}},
-            {{47, -312}, {46, -292}, {43, -268}, {41, -245}, {39, -223}, {36, -201}, {29, -182}, {15, -166}, {2, -153}, {-16, -140}, {-32, -134}, {-63, -121}, {-90, -110}, {-119, -99}, {-154, -90}, {-188, -83}, {-211, -71}, {-223, -45}, {-225, -19}, {-219, 13}, {-211, 34}, {-199, 53}, {-182, 72}, {-161, 88}, {-136, 98}, {-115, 110}, {-92, 118}, {-54, 128}, {-20, 132}, {-4, 134}, {28, 139}, {59, 141}, {78, 145}, {110, 154}, {128, 172}, {142, 194}, {149, 215}, {158, 244}, {164, 265}, {165, 285}, {173, 332}},
-            {{23, -315}, {19, -290}, {24, -272}, {22, -247}, {22, -224}, {17, -205}, {10, -188}, {0, -173}, {-18, -155}, {-37, -143}, {-57, -133}, {-75, -123}, {-91, -118}, {-103, -105}, {-107, -81}, {-105, -54}, {-90, -24}, {-85, -12}, {-70, 4}, {-45, 21}, {-20, 31}, {-1, 38}, {25, 45}, {46, 50}, {65, 54}, {82, 58}, {95, 79}, {95, 96}, {95, 114}, {96, 129}, {103, 159}, {109, 185}, {115, 198}, {128, 220}, {137, 244}, {147, 276}, {149, 326}},
-            {{43, -317}, {45, -302}, {45, -279}, {45, -260}, {43, -235}, {40, -221}, {33, -199}, {27, -178}, {18, -166}, {5, -152}, {-8, -140}, {-18, -135}, {-42, -124}, {-57, -112}, {-68, -88}, {-72, -67}, {-72, -38}, {-65, -21}, {-52, -8}, {-34, 4}, {-12, 11}, {3, 17}, {20, 20}, {42, 24}, {84, 34}, {95, 41}, {109, 58}, {115, 73}, {116, 88}, {116, 101}, {117, 122}, {129, 156}, {138, 179}, {148, 207}, {155, 227}, {164, 260}, {172, 283}, {187, 328}},
-            {{374, -164}, {347, -162}, {331, -161}, {309, -159}, {288, -157}, {261, -156}, {236, -150}, {218, -142}, {205, -128}, {202, -105}, {201, -83}, {218, -59}, {219, -35}, {215, -11}, {208, 4}, {188, 20}, {172, 30}, {147, 46}, {135, 56}, {116, 90}, {116, 116}, {119, 140}, {129, 167}, {138, 193}, {141, 214}, {153, 241}, {164, 271}, {172, 292}, {178, 329}},
-            {{366, -182}, {345, -181}, {324, -174}, {300, -169}, {271, -166}, {247, -165}, {220, -163}, {198, -157}, {184, -143}, {179, -118}, {179, -102}, {184, -86}, {191, -63}, {192, -50}, {192, -30}, {181, -10}, {163, 4}, {132, 18}, {110, 33}, {100, 45}, {90, 70}, {87, 95}, {89, 120}, {91, 140}, {102, 165}, {105, 177}, {115, 203}, {127, 230}, {135, 257}, {143, 282}, {148, 329}}
+            {{20, -306}, {19, -287}, {22, -262}, {19, -236}, {15, -208}, {6, -176}, {-12, -159}, {-38, -143}, {-63, -135}, {-87, -130}, {-109, -126}, {-138, -119}, {-178, -111}, {-202, -102}, {-228, -83}, {-250, -40}, {-249, -11}, {-242, 20}, {-228, 47}, {-213, 69}, {-196, 84}, {-179, 97}, {-157, 109}, {-135, 120}, {-115, 128}, {-93, 136}, {-63, 143}, {-37, 147}, {-11, 151}, {18, 154}, {37, 156}, {60, 164}, {79, 171}, {99, 184}, {117, 204}, {129, 223}, {134, 243}, {143, 279}, {149, 325}}, // 索引 0 (左路1)
+            {{47, -312}, {46, -292}, {43, -268}, {41, -245}, {39, -223}, {36, -201}, {29, -182}, {15, -166}, {2, -153}, {-16, -140}, {-32, -134}, {-63, -121}, {-90, -110}, {-119, -99}, {-154, -90}, {-188, -83}, {-211, -71}, {-223, -45}, {-225, -19}, {-219, 13}, {-211, 34}, {-199, 53}, {-182, 72}, {-161, 88}, {-136, 98}, {-115, 110}, {-92, 118}, {-54, 128}, {-20, 132}, {-4, 134}, {28, 139}, {59, 141}, {78, 145}, {110, 154}, {128, 172}, {142, 194}, {149, 215}, {158, 244}, {164, 265}, {165, 285}, {173, 332}}, // 索引 1 (左路2)
+            {{23, -315}, {19, -290}, {24, -272}, {22, -247}, {22, -224}, {17, -205}, {10, -188}, {0, -173}, {-18, -155}, {-37, -143}, {-57, -133}, {-75, -123}, {-91, -118}, {-103, -105}, {-107, -81}, {-105, -54}, {-90, -24}, {-85, -12}, {-70, 4}, {-45, 21}, {-20, 31}, {-1, 38}, {25, 45}, {46, 50}, {65, 54}, {82, 58}, {95, 79}, {95, 96}, {95, 114}, {96, 129}, {103, 159}, {109, 185}, {115, 198}, {128, 220}, {137, 244}, {147, 276}, {149, 326}}, // 索引 2 (中路1)
+            {{43, -317}, {45, -302}, {45, -279}, {45, -260}, {43, -235}, {40, -221}, {33, -199}, {27, -178}, {18, -166}, {5, -152}, {-8, -140}, {-18, -135}, {-42, -124}, {-57, -112}, {-68, -88}, {-72, -67}, {-72, -38}, {-65, -21}, {-52, -8}, {-34, 4}, {-12, 11}, {3, 17}, {20, 20}, {42, 24}, {84, 34}, {95, 41}, {109, 58}, {115, 73}, {116, 88}, {116, 101}, {117, 122}, {129, 156}, {138, 179}, {148, 207}, {155, 227}, {164, 260}, {172, 283}, {187, 328}}, // 索引 3 (中路2)
+            {{374, -164}, {347, -162}, {331, -161}, {309, -159}, {288, -157}, {261, -156}, {236, -150}, {218, -142}, {205, -128}, {202, -105}, {201, -83}, {218, -59}, {219, -35}, {215, -11}, {208, 4}, {188, 20}, {172, 30}, {147, 46}, {135, 56}, {116, 90}, {116, 116}, {119, 140}, {129, 167}, {138, 193}, {141, 214}, {153, 241}, {164, 271}, {172, 292}, {178, 329}}, // 索引 4 (右路1)
+            {{366, -182}, {345, -181}, {324, -174}, {300, -169}, {271, -166}, {247, -165}, {220, -163}, {198, -157}, {184, -143}, {179, -118}, {179, -102}, {184, -86}, {191, -63}, {192, -50}, {192, -30}, {181, -10}, {163, 4}, {132, 18}, {110, 33}, {100, 45}, {90, 70}, {87, 95}, {89, 120}, {91, 140}, {102, 165}, {105, 177}, {115, 203}, {127, 230}, {135, 257}, {143, 282}, {148, 329}}  // 索引 5 (右路2)
         };
         config.towerSlotPositions = { {-119, -178},{-165, -43},{-96, 59},{-238, 124},{38, 198},{172, 104}, {216, 67},{5, -33},{6, -82},{134, -35},{120, -80},{114, -137}};
 
-        auto addW5 = [&](const std::vector<Enemy::Type>& types, float interval) {
-            WaveConfig wave; float d = 0;
-            for (auto t : types) {
-                int group = rand() % 3;
-                wave.subWaves.emplace_back(randomRoute(group * 2, 2), std::vector<Enemy::Type>{t}, d);
-                d += interval;
-            }
-            config.waves.push_back(wave);
-        };
-        addW5(std::vector<Enemy::Type>(12, Enemy::Type::GOBLIN), 0.7f);
-        addW5({Enemy::Type::ORC, Enemy::Type::ORC, Enemy::Type::ORC, Enemy::Type::ORC, Enemy::Type::ORC}, 1.2f);
+        // ==================== WAVE 1 ====================
+        // 左路 3 Brigand | 中路 4 Bandit
+        WaveConfig w1; float d1_L = 0.0f, d1_M = 0.0f;
+        for (int i = 0; i < 3; ++i) { w1.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d1_L); d1_L += 1.2f; }
+        for (int i = 0; i < 4; ++i) { w1.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d1_M);  d1_M += 0.8f; }
+        config.waves.push_back(w1);
 
-        WaveConfig w3; float d3 = 0;
-        for(int i=0; i<30; i++) { w3.subWaves.emplace_back(randomRoute(0, 6), std::vector<Enemy::Type>{Enemy::Type::GOBLIN}, d3); d3 += 0.4f; }
+        // ==================== WAVE 2 ====================
+        // 左路 4 Brigand | 中路 8 Bandit
+        WaveConfig w2; float d2_L = 0.0f, d2_M = 0.0f;
+        for (int i = 0; i < 4; ++i) { w2.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d2_L); d2_L += 1.1f; }
+        for (int i = 0; i < 8; ++i) { w2.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d2_M);  d2_M += 0.7f; }
+        config.waves.push_back(w2);
+
+        // ==================== WAVE 3 ====================
+        // 右路 7 Giant-Spider
+        WaveConfig w3; float d3_R = 0.0f;
+        for (int i = 0; i < 7; ++i) { w3.subWaves.emplace_back(randomRoute(4, 2), std::vector<Enemy::Type>{Enemy::Type::GIANT_SPIDER}, d3_R); d3_R += 0.5f; }
         config.waves.push_back(w3);
+
+        // ==================== WAVE 4 ====================
+        // 右路 8 Giant-Spider
+        WaveConfig w4; float d4_R = 0.0f;
+        for (int i = 0; i < 8; ++i) { w4.subWaves.emplace_back(randomRoute(4, 2), std::vector<Enemy::Type>{Enemy::Type::GIANT_SPIDER}, d4_R); d4_R += 0.5f; }
+        config.waves.push_back(w4);
+
+        // ==================== WAVE 5 ====================
+        // 左路 5 Brigand 3 Bandit | 中路 3 Brigand 10 Bandit
+        WaveConfig w5; float d5_L = 0.0f, d5_M = 0.0f;
+        for (int i = 0; i < 5; ++i)  { w5.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d5_L); d5_L += 1.0f; }
+        for (int i = 0; i < 3; ++i)  { w5.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d5_L);  d5_L += 0.7f; }
+        for (int i = 0; i < 3; ++i)  { w5.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d5_M); d5_M += 1.2f; }
+        for (int i = 0; i < 10; ++i) { w5.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d5_M);  d5_M += 0.6f; }
+        config.waves.push_back(w5);
+
+        // ==================== WAVE 6 ====================
+        // 左路 5 Brigand 3 Bandit | 中路 3 Brigand 10 Bandit
+        WaveConfig w6; float d6_L = 0.0f, d6_M = 0.0f;
+        for (int i = 0; i < 5; ++i)  { w6.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d6_L); d6_L += 1.0f; }
+        for (int i = 0; i < 3; ++i)  { w6.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d6_L);  d6_L += 0.7f; }
+        for (int i = 0; i < 3; ++i)  { w6.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d6_M); d6_M += 1.2f; }
+        for (int i = 0; i < 10; ++i) { w6.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d6_M);  d6_M += 0.6f; }
+        config.waves.push_back(w6);
+
+        // ==================== WAVE 7 ====================
+        // 左路 15 Wulf | 中路 15 Wulf
+        WaveConfig w7; float d7_L = 0.0f, d7_M = 0.0f;
+        for (int i = 0; i < 15; ++i) { w7.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::WULF}, d7_L); d7_L += 0.4f; }
+        for (int i = 0; i < 15; ++i) { w7.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::WULF}, d7_M); d7_M += 0.4f; }
+        config.waves.push_back(w7);
+
+        // ==================== WAVE 8 ====================
+        // 左路 3 Worg | 中路 3 Worg
+        WaveConfig w8; float d8_L = 0.0f, d8_M = 0.0f;
+        for (int i = 0; i < 3; ++i) { w8.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::WORG}, d8_L); d8_L += 1.0f; }
+        for (int i = 0; i < 3; ++i) { w8.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::WORG}, d8_M); d8_M += 1.0f; }
+        config.waves.push_back(w8);
+
+        // ==================== WAVE 9 ====================
+        // 左路 6 Worg 5 Wulf | 中路 6 Worg 5 Wulf
+        WaveConfig w9; float d9_L = 0.0f, d9_M = 0.0f;
+        for (int i = 0; i < 6; ++i) { w9.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::WORG}, d9_L); d9_L += 0.9f; }
+        for (int i = 0; i < 5; ++i) { w9.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::WULF}, d9_L); d9_L += 0.4f; }
+        for (int i = 0; i < 6; ++i) { w9.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::WORG}, d9_M); d9_M += 0.9f; }
+        for (int i = 0; i < 5; ++i) { w9.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::WULF}, d9_M); d9_M += 0.4f; }
+        config.waves.push_back(w9);
+
+        // ==================== WAVE 10 ====================
+        // 右路 20 Giant-Spider
+        WaveConfig w10; float d10_R = 0.0f;
+        for (int i = 0; i < 20; ++i) { w10.subWaves.emplace_back(randomRoute(4, 2), std::vector<Enemy::Type>{Enemy::Type::GIANT_SPIDER}, d10_R); d10_R += 0.4f; }
+        config.waves.push_back(w10);
+
+        // ==================== WAVE 11 ====================
+        // 右路 2 Spider-Matriarch
+        WaveConfig w11; float d11_R = 0.0f;
+        for (int i = 0; i < 20; ++i) { w11.subWaves.emplace_back(randomRoute(4, 2), std::vector<Enemy::Type>{Enemy::Type::SPIDER_MATRIARCH}, d11_R); d11_R += 4.0f; }
+        config.waves.push_back(w11);
+
+        // ==================== WAVE 12 ====================
+        // 右路 3 Spider-Matriarch
+        WaveConfig w12; float d12_R = 0.0f;
+        for (int i = 0; i < 3; ++i) { w12.subWaves.emplace_back(randomRoute(4, 2), std::vector<Enemy::Type>{Enemy::Type::SPIDER_MATRIARCH}, d12_R); d12_R += 3.5f; }
+        config.waves.push_back(w12);
+
+        // ==================== WAVE 13 ====================
+        // 左路 6 Worg | 中路 15 Wulf | 右路 4 Spider-Matriarch
+        WaveConfig w13; float d13_L = 0.0f, d13_M = 0.0f, d13_R = 0.0f;
+        for (int i = 0; i < 6; ++i)  { w13.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::WORG}, d13_L);            d13_L += 0.8f; }
+        for (int i = 0; i < 15; ++i) { w13.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::WULF}, d13_M);            d13_M += 0.4f; }
+        for (int i = 0; i < 4; ++i)  { w13.subWaves.emplace_back(randomRoute(4, 2), std::vector<Enemy::Type>{Enemy::Type::SPIDER_MATRIARCH}, d13_R); d13_R += 3.5f; }
+        config.waves.push_back(w13);
+
+        // ==================== WAVE 14 ====================
+        // 左路 12 Brigand | 中路 12 Bandit 8 Worg | 右路 4 Spider-Matriarch
+        WaveConfig w14; float d14_L = 0.0f, d14_M = 0.0f, d14_R = 0.0f;
+        for (int i = 0; i < 12; ++i) { w14.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d14_L);           d14_L += 0.8f; }
+        for (int i = 0; i < 12; ++i) { w14.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d14_M);            d14_M += 0.5f; }
+        for (int i = 0; i < 8; ++i)  { w14.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::WORG}, d14_M);              d14_M += 0.8f; }
+        for (int i = 0; i < 4; ++i)  { w14.subWaves.emplace_back(randomRoute(4, 2), std::vector<Enemy::Type>{Enemy::Type::SPIDER_MATRIARCH}, d14_R); d14_R += 3.0f; }
+        config.waves.push_back(w14);
+
+        // ==================== WAVE 15 ====================
+        // 左路 1 Marauder 3 Brigand 6 Bandit | 中路 1 Marauder 3 Brigand 6 Bandit
+        WaveConfig w15; float d15_L = 0.0f, d15_M = 0.0f;
+        // 左路隊伍
+        w15.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::MARAUDER}, d15_L); d15_L += 2.0f;
+        for (int i = 0; i < 3; ++i)  { w15.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d15_L); d15_L += 0.9f; }
+        for (int i = 0; i < 6; ++i)  { w15.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d15_L);  d15_L += 0.6f; }
+        // 中路隊伍
+        w15.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::MARAUDER}, d15_M); d15_M += 2.0f;
+        for (int i = 0; i < 3; ++i)  { w15.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BRIGAND}, d15_M); d15_M += 0.9f; }
+        for (int i = 0; i < 6; ++i)  { w15.subWaves.emplace_back(randomRoute(2, 2), std::vector<Enemy::Type>{Enemy::Type::BANDIT}, d15_M);  d15_M += 0.6f; }
+        config.waves.push_back(w15);
     }
 
     return std::make_shared<Map>(config);
