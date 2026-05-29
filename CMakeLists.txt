@@ -71,6 +71,9 @@ add_executable(${PROJECT_NAME}
         include/MageSkill/ReinforcementSpell.hpp
         include/MageSkill/FireballSpell.hpp
         include/MageSkill/SpellManager.hpp
+        include/SpiderMatriarch.hpp
+        include/Egg.hpp
+        src/SpiderMatriarch.cpp
 )
 
 if(MSVC)
