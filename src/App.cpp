@@ -234,6 +234,7 @@ void App::HandleGamePlay() {
 
     for (auto& enemy : m_Enemies) enemy->Draw();
     for (auto& proj : m_Projectiles) proj->Draw();
+    m_SpellManager->Draw();
     if (m_BuildMenu->IsVisible()) m_BuildMenu->Draw();
 
     if (m_Hud) m_Hud->Draw(m_SpellManager);

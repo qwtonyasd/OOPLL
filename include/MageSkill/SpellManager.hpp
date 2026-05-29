@@ -51,8 +51,8 @@ public:
             m_ReinforceCooldownTimer = 10.0f;
         }
         else if (m_CurrentSelectedSpell == SpellType::FIREBALL) {
-            // 從螢幕頂部落下
-            glm::vec2 startPos = {clickPos.x, -50.0f};
+            // 從螢幕頂部落
+            glm::vec2 startPos = {clickPos.x, 800.0f};
             m_ActiveFireballs.push_back(std::make_shared<FireballProjectile>(startPos, clickPos, 100.0f, 80.0f));
             m_FireballCooldownTimer = 15.0f;
         }
