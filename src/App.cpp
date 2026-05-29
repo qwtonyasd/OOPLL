@@ -68,7 +68,7 @@ void App::HandleGamePlay() {
             return;
         }
     } else {
-        m_SpellManager->Update(dt);
+        m_SpellManager->Update(dt, m_Enemies);
 
         int currentWaveIdx = gm.GetCurrentWave() - 1;
         if (currentWaveIdx < static_cast<int>(m_Waves.size())) {

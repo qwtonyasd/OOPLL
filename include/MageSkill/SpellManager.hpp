@@ -2,8 +2,9 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <memory>
-#include <iostream>
-#include "ReinforcementSpell.hpp" // 確保正確引入
+#include "ReinforcementSpell.hpp"
+#include "FireballSpell.hpp"
+#include "FireballProjectile.hpp"
 #include "Enemy.hpp"
 #include "Soldier.hpp"
 
@@ -13,17 +14,28 @@ public:
 
     SpellManager() = default;
 
-    // --- 恢復這些必要的介面以符合 App.cpp 與 Hud.cpp 的呼叫 ---
-    void Update(float dt) {
+    void Update(float dt, std::vector<std::shared_ptr<Enemy>>& enemies) {
         if (m_FireballCooldownTimer > 0.0f) m_FireballCooldownTimer -= dt;
         if (m_ReinforceCooldownTimer > 0.0f) m_ReinforceCooldownTimer -= dt;
+
+        // 更新所有飛行中的火球
+        for (auto it = m_ActiveFireballs.begin(); it != m_ActiveFireballs.end(); ) {
+            if (!(*it)->Update(enemies, dt)) {
+                it = m_ActiveFireballs.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
+    void Draw() {
+        for (auto& f : m_ActiveFireballs) f->Draw();
     }
 
     void SelectFireball() { if (m_FireballCooldownTimer <= 0.0f) m_CurrentSelectedSpell = SpellType::FIREBALL; }
     void SelectReinforce() { if (m_ReinforceCooldownTimer <= 0.0f) m_CurrentSelectedSpell = SpellType::REINFORCE; }
     void CancelSelection() { m_CurrentSelectedSpell = SpellType::NONE; }
 
-    // 用於 UI 的判斷
     SpellType GetSelectedSpell() const { return m_CurrentSelectedSpell; }
     float GetFireballCooldownRatio() const { return m_FireballCooldownTimer / 15.0f; }
     float GetReinforceCooldownRatio() const { return m_ReinforceCooldownTimer / 10.0f; }
@@ -34,13 +46,14 @@ public:
         if (m_CurrentSelectedSpell == SpellType::NONE) return;
 
         if (m_CurrentSelectedSpell == SpellType::REINFORCE) {
-            // 這裡委派給 ReinforcementSpell 執行
             ReinforcementSpell rs(stageSoldiers);
             rs.Cast(clickPos);
             m_ReinforceCooldownTimer = 10.0f;
         }
         else if (m_CurrentSelectedSpell == SpellType::FIREBALL) {
-            // 火球邏輯 (可選)
+            // 從螢幕頂部落下
+            glm::vec2 startPos = {clickPos.x, -50.0f};
+            m_ActiveFireballs.push_back(std::make_shared<FireballProjectile>(startPos, clickPos, 100.0f, 80.0f));
             m_FireballCooldownTimer = 15.0f;
         }
 
@@ -51,4 +64,5 @@ private:
     SpellType m_CurrentSelectedSpell = SpellType::NONE;
     float m_FireballCooldownTimer = 0.0f;
     float m_ReinforceCooldownTimer = 0.0f;
+    std::vector<std::shared_ptr<FireballProjectile>> m_ActiveFireballs;
 };

@@ -8,8 +8,8 @@ ArcherTower::ArcherTower(glm::vec2 pos)
     // 1. 定義三級數據：{範圍, 攻速, 傷害, 升級費用, 基座圖路徑}
     m_ArcherStats = {
         {175.0f, 0.8f, 9.0f, 10,  "../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/1.png"},
-        {200.0f, 0.7f, 25.0f, 10, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel2/1.png"},
-        {225.0f, 0.6f, 40.0f, 160, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel3/1.png"}
+        {200.0f, 0.7f, 12.0f, 10, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel2/1.png"},
+        {225.0f, 0.6f, 15.0f, 160, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel3/1.png"}
     };
     //讓價格正常顯示
     ApplyBaseStats(m_ArcherStats[0]);

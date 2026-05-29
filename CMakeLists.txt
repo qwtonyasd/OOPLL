@@ -66,14 +66,14 @@ add_executable(${PROJECT_NAME}
         src/Enemy.cpp
         src/VictoryMenu.cpp
         src/MapFactory.cpp
+        src/SpiderMatriarch.cpp
+        include/SpiderMatriarch.hpp
         include/Shaman.hpp
         include/MageSkill/Spell.hpp
         include/MageSkill/ReinforcementSpell.hpp
         include/MageSkill/FireballSpell.hpp
         include/MageSkill/SpellManager.hpp
-        include/SpiderMatriarch.hpp
-        include/Egg.hpp
-        src/SpiderMatriarch.cpp
+        include/MageSkill/FireballProjectile.hpp
 )
 
 if(MSVC)

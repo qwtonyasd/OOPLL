@@ -146,8 +146,29 @@ void Barracks::Draw() {
 
     // 2. 畫塔建築物本體
     if (m_Visible && m_Drawable) {
-        auto data = Util::ConvertToUniformBufferData(m_Transform, m_Drawable->GetSize(), 15.0f);
+        // 備份原始 transform，防止 m_Transform 被永久修改
+        Util::Transform originalTransform = m_Transform;
+        glm::vec2 size = m_Drawable->GetSize();
+
+        // 調整臨時的變數值，而不改動真實的 m_Transform
+        if (static_cast<int>(size.x) % 2 != 0) {
+            m_Transform.translation.x = std::round(m_Transform.translation.x) + 0.5f;
+        } else {
+            m_Transform.translation.x = std::round(m_Transform.translation.x);
+        }
+
+        if (static_cast<int>(size.y) % 2 != 0) {
+            m_Transform.translation.y = std::round(m_Transform.translation.y) + 0.5f;
+        } else {
+            m_Transform.translation.y = std::round(m_Transform.translation.y);
+        }
+
+        // 使用調整後的 transform 生成 buffer
+        auto data = Util::ConvertToUniformBufferData(m_Transform, size, 15.0f);
         m_Drawable->Draw(data);
+
+        // 畫完後立刻還原，這保證了 Barracks 邏輯層的座標永遠是正確的
+        m_Transform = originalTransform;
     }
 
     // 3. 畫小兵
