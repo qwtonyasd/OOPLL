@@ -15,17 +15,36 @@ void App::Start() {
     m_BuildMenu = std::make_unique<BuildMenu>();
     m_Hud = std::make_unique<Hud>();
 
-    // 1. 初始化法術管理器
+    // 初始化法術管理器
     m_SpellManager = std::make_unique<SpellManager>();
 
     m_VictoryMenu = std::make_unique<VictoryMenu>();
     m_Root.AddChild(m_VictoryMenu->GetGameObject());
+
+    // 🎯 新增：初始化天賦升級選單
+    m_UpgradeMenu = std::make_unique<UpgradeMenu>();
 
     m_IsInGame = false;
     m_CurrentState = State::UPDATE;
 }
 
 void App::Update() {
+    // 🎯 新增優先判定：如果天賦升級介面開啟中，優先走升級選單的 Update 與 Draw，阻斷遊戲主迴圈
+    if (m_UpgradeMenu && m_UpgradeMenu->IsVisible()) {
+        float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
+        if (dt > 0.1f) dt = 0.016f;
+
+        m_UpgradeMenu->Update(dt);
+        m_UpgradeMenu->Draw();
+
+        // 在升級頁面依然允許按下 ESC 鍵直接關閉整個遊戲
+        if (Util::Input::IsKeyDown(Util::Keycode::ESCAPE) || Util::Input::IfExit()) {
+            m_CurrentState = State::END;
+        }
+        return; // 直接中斷，避免在背景點選到地圖關卡
+    }
+
+    // 原本的遊戲/選關切換邏輯
     if (m_IsInGame) {
         HandleGamePlay();
     } else {
@@ -46,6 +65,11 @@ void App::HandleSelectLevel() {
         LOG_INFO("Entering Level: {}", selected);
         ChangeLevel(selected);
         m_IsInGame = true;
+    }
+    // 🎯 新增：接收到世界地圖回傳的 -1 特殊代碼，打開升級面板
+    else if (selected == -1) {
+        LOG_INFO("Opening Upgrade Menu...");
+        m_UpgradeMenu->SetVisible(true);
     }
 }
 
@@ -111,7 +135,7 @@ void App::HandleGamePlay() {
 
         m_TowerManager->UpdateAll(m_Enemies, m_Projectiles);
 
-        // 更新援軍小兵 (已修正參數)
+        // 更新援軍小兵
         for (auto it = m_ActiveReinforcements.begin(); it != m_ActiveReinforcements.end(); ) {
             auto& soldier = *it;
             if (soldier) {
@@ -131,9 +155,9 @@ void App::HandleGamePlay() {
             else ++it;
         }
 
-        // 更新敵人 (已修正參數)
+        // 更新敵人
         for (auto it = m_Enemies.begin(); it != m_Enemies.end(); ) {
-            (*it)->Update(m_Enemies, dt); // 補上了 m_Enemies 與 dt
+            (*it)->Update(m_Enemies, dt);
 
             if ((*it)->ReachedEnd()) {
                 gm.TakeDamage(1);
@@ -242,6 +266,7 @@ void App::HandleGamePlay() {
 
     if (Util::Input::IsKeyDown(Util::Keycode::BACKSPACE)) m_IsInGame = false;
 }
+
 void App::ChangeLevel(int levelId) {
     m_CurrentLevelID = levelId;
     auto newMap = MapFactory::CreateLevel(levelId);
@@ -261,7 +286,6 @@ void App::ChangeLevel(int levelId) {
     m_TowerSlots.clear();
     m_PendingSubWaves.clear();
 
-    // 換關卡時，清空場上殘留的法術小兵與選取狀態
     m_ActiveReinforcements.clear();
     m_SpellManager->CancelSelection();
 

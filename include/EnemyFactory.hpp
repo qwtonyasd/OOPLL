@@ -99,8 +99,8 @@ public:
         else if (type == Enemy::Type::SHAMAN) {
             std::vector<std::vector<std::string>> moveAnis = {
                 generatePaths("Shaman", 1, 12),
-                generatePaths("Shaman", 13, 24),
-                generatePaths("Shaman", 25, 36)
+                generatePaths("Shaman", 25, 36),
+                generatePaths("Shaman", 13, 24)
             };
             std::vector<std::string> skillEffectPaths = generateStepPaths("Shaman", 10815, 10863, 2);
 

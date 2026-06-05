@@ -13,10 +13,11 @@
 #include "Enemy.hpp"
 #include "Tower/Projectile/Projectile.hpp"
 #include "VictoryMenu.hpp"
+#include "UpgradeMenu.hpp" // 🎯 新增：引入天賦升級選單
 #include "Map.hpp"
 
-// --- 新增：法術系統與小兵的標頭檔 ---
-#include "MageSkill\SpellManager.hpp"
+// 法術系統與小兵的標頭檔
+#include "MageSkill/SpellManager.hpp"
 #include "Soldier.hpp"
 
 class App {
@@ -42,8 +43,9 @@ private:
     std::unique_ptr<Hud> m_Hud;
     std::unique_ptr<WorldMap> m_WorldMap;
     std::unique_ptr<VictoryMenu> m_VictoryMenu;
+    std::unique_ptr<UpgradeMenu> m_UpgradeMenu; // 🎯 新增：管理永久天賦升級面版
 
-    // --- 新增：主動法術管理器 ---
+    // 主動法術管理器
     std::unique_ptr<SpellManager> m_SpellManager;
 
     // 物件容器
@@ -51,7 +53,7 @@ private:
     std::vector<std::shared_ptr<Enemy>> m_Enemies;
     std::vector<std::shared_ptr<Projectile>> m_Projectiles;
 
-    // --- 新增：存放法術召喚出的民兵/援軍容器 ---
+    // 存放法術召喚出的民兵/援軍容器
     std::vector<std::shared_ptr<Soldier>> m_ActiveReinforcements;
 
     std::shared_ptr<TowerSlot> m_SelectedSlot = nullptr;
@@ -70,4 +72,4 @@ private:
     bool m_IsInGame = false;
 };
 
-#endif
+#endif // APP_HPP

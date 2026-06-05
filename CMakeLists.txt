@@ -74,6 +74,8 @@ add_executable(${PROJECT_NAME}
         include/MageSkill/FireballSpell.hpp
         include/MageSkill/SpellManager.hpp
         include/MageSkill/FireballProjectile.hpp
+        include/UpgradeMenu.hpp
+        src/UpgradeMenu.cpp
 )
 
 if(MSVC)
