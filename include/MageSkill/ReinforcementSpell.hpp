@@ -43,9 +43,9 @@ public:
 
         peasantConfig.maxHP = 30.0f;
         peasantConfig.speed = 1.6f;
-        peasantConfig.minDamage = 4;
-        peasantConfig.maxDamage = 8;
-        peasantConfig.attackCooldown = 2.0f;
+        peasantConfig.minDamage = 1;
+        peasantConfig.maxDamage = 3;
+        peasantConfig.attackCooldown = 0.2f;
         peasantConfig.detectionRange = 80.0f;
         peasantConfig.meleeRange = 20.0f;
 

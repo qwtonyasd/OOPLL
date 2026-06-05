@@ -8,9 +8,9 @@ Barracks::Barracks(glm::vec2 pos, const std::vector<glm::vec2>& route)
 
     // 1. 定義數據表：{範圍, 復活冷卻, 傷害(小兵), 升級費用, 基座圖路徑}
     m_BarracksStats = {
-        {120.0f, 10.0f, 3.0f, 110, "../PTSD/assets/sprites/images/BarracksTower/TowerLevel1/1.png"},
-        {140.0f, 8.0f,  6.0f, 160, "../PTSD/assets/sprites/images/BarracksTower/TowerLevel2/1.png"},
-        {160.0f, 7.0f,  10.0f, 0,  "../PTSD/assets/sprites/images/BarracksTower/TowerLevel3/1.png"}
+        {120.0f, 10.0f, 2.0f, 110, "../PTSD/assets/sprites/images/BarracksTower/TowerLevel1/1.png"},
+        {140.0f, 8.0f,  3.0f, 160, "../PTSD/assets/sprites/images/BarracksTower/TowerLevel2/1.png"},
+        {160.0f, 7.0f,  5.0f, 0,  "../PTSD/assets/sprites/images/BarracksTower/TowerLevel3/1.png"}
     };
 
     // 2. 套用 Level 1 數據：這會將 m_Cost 初始化為 110 (升級價)
@@ -98,11 +98,12 @@ void Barracks::SpawnSoldier(int slotIndex) {
     }
 
     genericInfantry.maxHP = m_SoldierHP;
-    genericInfantry.minDamage = m_SoldierDamage - 2;
-    genericInfantry.maxDamage = m_SoldierDamage + 2;
+    genericInfantry.minDamage = m_SoldierDamage - 1;
+    genericInfantry.maxDamage = m_SoldierDamage + 1;
     genericInfantry.speed = 1.5f;
     genericInfantry.detectionRange = 80.0f;
     genericInfantry.meleeRange = 20.0f;
+    genericInfantry.attackCooldown = 0.6f;
 
     // 2. 直接生成
     m_Slots[slotIndex].soldier = std::make_shared<Soldier>(

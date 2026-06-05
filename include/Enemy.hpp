@@ -26,7 +26,7 @@ public:
     // 已修正：與 Unit.hpp 的簽章完全一致
     virtual void Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) override;
     virtual void Draw() override;
-
+    void MoveTowardsNextNode();
     void TakeDamage(float damage, DamageType damageType = DamageType::PHYSICAL);
     void UpdateDirection(glm::vec2 dir);
     void SetState(State newState);
@@ -51,6 +51,7 @@ public:
     }
 
 protected:
+    glm::vec2 m_MoveDirection = {1.0f, 0.0f}; // 初始預設朝右
     Enemy::Type m_Type;
     State m_CurrentState;
 
