@@ -18,7 +18,7 @@ public:
         m_FlagImage = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/Flag/1.png");
 
         m_LevelPositions = {
-            {-240, -170}, {-120, 40}, {150, -90}, {320, 110}, {480, -30}
+            {-240, -170}, {-120, 40}, {140, -80}, {170, 110}, {160, 170}
         };
     }
 
