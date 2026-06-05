@@ -1,6 +1,7 @@
 #include "Enemy.hpp"
 #include "Soldier.hpp"
 
+// 建構子 (保持不變)
 Enemy::Enemy(Enemy::Type type, const std::vector<glm::vec2>& path, float speed, float hp,
              const std::vector<std::vector<std::string>>& moveAnimations,
              const std::vector<std::string>& attackPaths,
@@ -17,29 +18,24 @@ Enemy::Enemy(Enemy::Type type, const std::vector<glm::vec2>& path, float speed, 
 }
 
 void Enemy::Update(std::vector<std::shared_ptr<Enemy>>&, float dt) {
-    // 1. 處理死亡與特殊狀態
     if (m_HP <= 0 && m_CurrentState != State::DEATH) {
         OnDeath();
         return;
     }
     if (m_CurrentState == State::DEATH || m_CurrentState == State::SKILL) return;
 
-    // 2. 處理攻擊狀態
     if (m_IsBlocked) {
-        // 如果剛進入攻擊狀態，切換動畫並執行一次性轉向
         if (m_CurrentState != State::ATTACK) {
             SetState(State::ATTACK);
             SetDrawable(m_AttackAni);
             m_AttackAni->Play();
 
-            // 在切換攻擊瞬間，判斷小兵位置來決定面向
+            // 攻擊轉向
             if (m_TargetSoldier) {
-                float direction = (m_TargetSoldier->m_Transform.translation.x < m_Transform.translation.x) ? -1.0f : 1.0f;
-                m_Transform.scale.x = direction;
+                m_Transform.scale.x = (m_TargetSoldier->m_Transform.translation.x < m_Transform.translation.x) ? -1.0f : 1.0f;
             }
         }
 
-        // 執行攻擊邏輯
         if (m_TargetSoldier && m_TargetSoldier->GetHP() > 0) {
             m_AttackTimer += dt;
             if (m_AttackTimer >= m_AttackCooldown) {
@@ -47,35 +43,55 @@ void Enemy::Update(std::vector<std::shared_ptr<Enemy>>&, float dt) {
                 m_AttackTimer = 0.0f;
             }
         } else {
-            // 目標消失，取消阻塞
+            // --- 核心修正：小兵死亡，強制重置狀態為 MOVE_RIGHT 以解除 UpdateDirection 攔截 ---
             m_IsBlocked = false;
-        }
-    }
-    // 3. 處理移動狀態
-    else {
-        // 若之前是攻擊狀態，恢復移動時重置 scale 為正面
-        if (m_CurrentState == State::ATTACK) {
-            m_Transform.scale.x = 1.0f;
-        }
+            m_TargetSoldier = nullptr;
+            m_Transform.scale.x = 1.0f; // 重置翻轉
 
+            // 這裡強制切回移動狀態
+            SetState(State::MOVE_RIGHT);
+            MoveTowardsNextNode(); // 先移動一小步
+            UpdateDirection(m_MoveDirection); // 觸發動畫切換
+        }
+    } else {
         MoveTowardsNextNode();
-
-        // 更新移動動畫
-        glm::vec2 nextTarget = (m_CurrentNodeIdx < m_Path.size()) ? m_Path[m_CurrentNodeIdx] : m_Transform.translation;
-        m_MoveDirection = nextTarget - m_Transform.translation;
+        m_MoveDirection = (m_CurrentNodeIdx < m_Path.size()) ? (m_Path[m_CurrentNodeIdx] - m_Transform.translation) : m_MoveDirection;
         UpdateDirection(m_MoveDirection);
     }
 }
 
+void Enemy::UpdateDirection(glm::vec2 dir) {
+    // 如果正在被 Block 且處於攻擊中，保持當前狀態不動
+    if (m_IsBlocked && m_CurrentState == State::ATTACK) return;
+
+    if (std::abs(dir.x) > std::abs(dir.y)) {
+        // 水平移動
+        SetState(State::MOVE_RIGHT);
+        SetDrawable(m_MoveRightAni);
+
+        // 核心邏輯：向右走(dir.x > 0)時，如果 scale 為 1.0f 還是反的，請將 1.0f 與 -1.0f 對調
+        m_Transform.scale.x = (dir.x > 0) ? 1.0f : -1.0f;
+    } else {
+        // 垂直移動時，強制將 scale 重置為 1.0f，避免殘留水平翻轉
+        m_Transform.scale.x = 1.0f;
+
+        SetState(dir.y > 0 ? State::MOVE_DOWN : State::MOVE_UP);
+        SetDrawable(dir.y > 0 ? m_MoveDownAni : m_MoveUpAni);
+    }
+}
+
+// 其餘函式保持不變...
 void Enemy::MoveTowardsNextNode() {
-    if (m_CurrentNodeIdx >= m_Path.size()) return;
+    if (m_CurrentNodeIdx >= m_Path.size()) {
+        m_ReachedEnd = true;
+        return;
+    }
     float dt = static_cast<float>(Util::Time::GetDeltaTimeMs()) / 1000.0f;
     glm::vec2 targetPos = m_Path[m_CurrentNodeIdx];
-    m_MoveDirection = targetPos - m_Transform.translation;
+    glm::vec2 diff = targetPos - m_Transform.translation;
 
-    float dist = glm::length(m_MoveDirection);
-    if (dist > 1.0f) {
-        m_Transform.translation += glm::normalize(m_MoveDirection) * m_Speed * dt;
+    if (glm::length(diff) > 1.0f) {
+        m_Transform.translation += glm::normalize(diff) * m_Speed * dt;
     } else {
         m_CurrentNodeIdx++;
     }
@@ -83,35 +99,8 @@ void Enemy::MoveTowardsNextNode() {
 
 void Enemy::Draw() {
     if (m_HP <= 0 && IsDeadAnimationFinished()) return;
-    // GameObject::Draw() 內部會呼叫 m_Drawable->Draw()，這將觸發 Animation::Draw()
-    // 進而執行自動的 Update() 更新影格
     GameObject::Draw();
     DrawHealthBar();
-}
-
-void Enemy::UpdateDirection(glm::vec2 dir) {
-    // 若正在攻擊中，不應因為方向微變而中斷攻擊動畫
-    if (m_CurrentState == State::ATTACK) return;
-
-    if (std::abs(dir.x) > std::abs(dir.y)) {
-        // 水平移動
-        SetState(State::MOVE_RIGHT);
-        SetDrawable(m_MoveRightAni);
-
-        if (dir.x > 0) {
-            // 往右走：將圖片水平翻轉 (因為圖片預設朝左)
-            m_Transform.scale.x = 1.0f;
-        } else {
-            // 往左走：圖片保持預設方向 (朝左)
-            m_Transform.scale.x = -1.0f;
-        }
-    } else {
-        // 上下移動時，重置翻轉狀態
-        m_Transform.scale.x = 1.0f;
-
-        SetState(dir.y > 0 ? State::MOVE_DOWN : State::MOVE_UP);
-        SetDrawable(dir.y > 0 ? m_MoveDownAni : m_MoveUpAni);
-    }
 }
 
 void Enemy::SetState(State newState) { m_CurrentState = newState; }
@@ -127,6 +116,4 @@ bool Enemy::IsDeadAnimationFinished() const {
     return !m_DeadAni || m_DeadAni->GetState() == Util::Animation::State::ENDED;
 }
 
-void Enemy::TakeDamage(float damage, DamageType) {
-    m_HP -= damage;
-}
+void Enemy::TakeDamage(float damage, DamageType) { m_HP -= damage; }
