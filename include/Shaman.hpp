@@ -18,7 +18,6 @@ public:
         m_EffectAni = std::make_shared<Util::Animation>(effectPaths, false, 100, false, 100);
     }
 
-    // --- 關鍵修正：修正 Update 的簽章以匹配 Enemy ---
     void Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) override {
 
         // 1. 如果正在施放技能，處理狀態並阻斷移動邏輯
@@ -36,7 +35,7 @@ public:
         if (m_CurrentState != State::DEATH) {
             m_SkillTimer += dt;
             if (m_SkillTimer >= m_SkillCooldown) {
-                CastSkill();
+                CastSkill(enemies); // 🎯 修正：把戰場上的敵人陣列傳進去
                 m_SkillTimer = 0.0f;
             }
         }
@@ -61,9 +60,8 @@ public:
         SetDrawable(m_SkillAni);
     }
 
-    void SetEnemyList(const std::vector<std::shared_ptr<Enemy>>* enemyList) {
-        m_EnemyList = enemyList;
-    }
+    // 💡 註解或刪除這個危險的函式，以後不需要它了
+    // void SetEnemyList(const std::vector<std::shared_ptr<Enemy>>* enemyList) { ... }
 
 private:
     float m_SkillTimer = 0.0f;
@@ -73,9 +71,9 @@ private:
 
     std::shared_ptr<Util::Animation> m_SkillAni;
     std::shared_ptr<Util::Animation> m_EffectAni;
-    const std::vector<std::shared_ptr<Enemy>>* m_EnemyList = nullptr;
 
-    void CastSkill() {
+    // 🎯 修正：直接傳入傳承自 Update 的實時安全引用，拿掉原本的成員變數指標
+    void CastSkill(std::vector<std::shared_ptr<Enemy>>& enemies) {
         SetState(State::SKILL);
         m_SkillAni->SetCurrentFrame(0);
         m_SkillAni->Play();
@@ -84,18 +82,18 @@ private:
             m_EffectAni->SetCurrentFrame(0);
             m_EffectAni->Play();
         }
-        HealNearbyEnemies();
+        HealNearbyEnemies(enemies);
     }
 
-    void HealNearbyEnemies() {
-        if (m_EnemyList == nullptr) return;
-
+    // 🎯 修正：直接對傳入的實時 vector 做安全遍歷，絕不崩潰
+    void HealNearbyEnemies(std::vector<std::shared_ptr<Enemy>>& enemies) {
         glm::vec2 myPos = GetPosition();
-        for (const auto& enemy : *m_EnemyList) {
-            if (enemy->IsDeadAnimationFinished()) continue;
-
-            if (glm::distance(myPos, enemy->GetPosition()) <= m_HealRange) {
-                enemy->Heal(m_HealAmount);
+        for (const auto& enemy : enemies) {
+            // 確保目標敵人有效，且沒有死透（還在場上才補血）
+            if (enemy && !enemy->IsDeadAnimationFinished()) {
+                if (glm::distance(myPos, enemy->GetPosition()) <= m_HealRange) {
+                    enemy->Heal(m_HealAmount);
+                }
             }
         }
     }

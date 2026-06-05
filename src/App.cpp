@@ -167,6 +167,9 @@ void App::HandleGamePlay() {
                 }),
             m_Enemies.end());
 
+        // 🎯 唯一修改之需求部分：等待 remove_if 迴圈安全結束後，再將小蜘蛛統一匯入主戰場
+        Egg::ClearSpawnQueue(m_Enemies);
+
         // --- 3. 輸入處理 ---
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
         if (Util::Input::IsKeyDown(Util::Keycode::NUM_1)) m_SpellManager->SelectFireball();

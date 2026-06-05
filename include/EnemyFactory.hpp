@@ -36,21 +36,21 @@ public:
         return paths;
     }
 
-    // 專門供蜘蛛女皇產卵時調用的幼蛛/卵生成工廠接口
+    // 🎯 專門供蜘蛛女皇產卵時調用的卵生成工廠接口
     static std::shared_ptr<Enemy> CreateEgg(const std::vector<glm::vec2>& remainingPath, const glm::vec2& spawnPos) {
-        // 載入幼蛛的移動（奇數跳號）
+        // 載入幼蛛的移動（12201 - 12253 奇數跳號）
         std::vector<std::vector<std::string>> spiderMoveAnis = {
             generateStepPaths("Spider-Matriarch/egg", 12201, 12217, 2), // 向右
             generateStepPaths("Spider-Matriarch/egg", 12219, 12235, 2), // 向上
             generateStepPaths("Spider-Matriarch/egg", 12237, 12253, 2)  // 向下
         };
 
-        // 幼蛛攻擊與死亡（奇數跳號）
-        std::vector<std::string> spiderAttack = generateStepPaths("Spider-Matriarch/egg", 12255, 12281, 2); //
-        std::vector<std::string> spiderDead = generateStepPaths("Spider-Matriarch/egg", 12309, 12319, 2); //
+        // 幼蛛攻擊與死亡（12255 - 12319 奇數跳號）
+        std::vector<std::string> spiderAttack = generateStepPaths("Spider-Matriarch/egg", 12255, 12281, 2);
+        std::vector<std::string> spiderDead   = generateStepPaths("Spider-Matriarch/egg", 12309, 12319, 2);
 
         // 蛋的孵化動畫（10569 到 10667 的奇數跳號）
-        std::vector<std::string> eggHatch = generateStepPaths("Spider-Matriarch/egg", 10569, 10667, 2); //
+        std::vector<std::string> eggHatch    = generateStepPaths("Spider-Matriarch/egg", 10569, 10667, 2);
 
         // 幼蛛數值：速度極快（85.0f）、血量偏低（15.0f）
         return std::make_shared<Egg>(
@@ -201,6 +201,23 @@ public:
                 moveAnis,
                 generateStepPaths("Spider-Matriarch", 12634, 12652, 2), // 攻擊動畫 (偶數跳號)
                 generateStepPaths("Spider-Matriarch", 12678, 12694, 2)  // 死亡動畫 (偶數跳號)
+            );
+        }
+        // 🎯 --- 新增 SPIDERLING 常規通道（從建構當下就交給 Enemy 接管，杜絕崩潰） ---
+        else if (type == Enemy::Type::SPIDERLING) {
+            std::vector<std::vector<std::string>> moveAnis = {
+                generateStepPaths("Spider-Matriarch/egg", 12201, 12217, 2), // 向右
+                generateStepPaths("Spider-Matriarch/egg", 12219, 12235, 2), // 向上
+                generateStepPaths("Spider-Matriarch/egg", 12237, 12253, 2)  // 向下
+            };
+
+            return std::make_shared<Enemy>(
+                type, path,
+                85.0f, // 小蜘蛛衝鋒移速
+                15.0f, // 小蜘蛛低血量
+                moveAnis,
+                generateStepPaths("Spider-Matriarch/egg", 12255, 12281, 2), // 攻擊動畫 (奇數跳號)
+                generateStepPaths("Spider-Matriarch/egg", 12309, 12319, 2)  // 死亡動畫 (奇數跳號)
             );
         }
         return nullptr;

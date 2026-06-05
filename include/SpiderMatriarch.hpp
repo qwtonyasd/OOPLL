@@ -5,9 +5,6 @@
 #include <vector>
 #include <memory>
 
-// 前置宣告
-class EnemyFactory;
-
 class SpiderMatriarch : public Enemy {
 public:
     SpiderMatriarch(Enemy::Type type, const std::vector<glm::vec2>& path, float speed, float hp,
@@ -23,22 +20,18 @@ public:
 
         m_SpawnTimer += dt;
         if (m_SpawnTimer >= m_SpawnCooldown) {
-            SpawnEgg();
+            // 🎯 直接把實時的 enemies 陣列丟進去產卵，完全不需要 m_LevelEnemyList 了！
+            SpawnEgg(enemies);
             m_SpawnTimer = 0.0f;
         }
     }
 
-    void SetLevelEnemyList(std::vector<std::shared_ptr<Enemy>>* enemyList) {
-        m_LevelEnemyList = enemyList;
-    }
-
 private:
     float m_SpawnTimer = 0.0f;
-    float m_SpawnCooldown = 8.0f;
-    std::vector<std::shared_ptr<Enemy>>* m_LevelEnemyList = nullptr;
+    float m_SpawnCooldown = 5.0f; // 改為你需要的 5 秒冷卻
 
-    // 僅宣告，不在此實作
-    void SpawnEgg();
+    // 🎯 傳入實時安全引用
+    void SpawnEgg(std::vector<std::shared_ptr<Enemy>>& enemies);
 };
 
 #endif // SPIDER_MATRIARCH_HPP

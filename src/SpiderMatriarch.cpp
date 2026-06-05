@@ -1,18 +1,23 @@
 #include "SpiderMatriarch.hpp"
-#include "EnemyFactory.hpp"
-#include <iostream>
+#include "EnemyFactory.hpp" // 在 .cpp 引入工廠，完美解開標頭檔循環引用
 
-void SpiderMatriarch::SpawnEgg() {
-    if (m_LevelEnemyList == nullptr) return;
+void SpiderMatriarch::SpawnEgg(std::vector<std::shared_ptr<Enemy>>& enemies) {
+    // 獲取女皇當前的位置
+    glm::vec2 spawnPos = m_Transform.translation;
 
-    std::cout << "[Boss Skill] Spider-Matriarch 產下了一顆蜘蛛卵！" << std::endl;
+    // 擷取女皇尚未走完的剩餘路徑，讓孵化出來的幼蛛知道接下來該往哪走
+    std::vector<glm::vec2> remainingPath;
+    if (m_CurrentNodeIdx < m_Path.size()) {
+        remainingPath.assign(m_Path.begin() + m_CurrentNodeIdx, m_Path.end());
+    } else if (!m_Path.empty()) {
+        remainingPath.push_back(m_Path.back());
+    }
 
-    auto remainingPath = m_Path; 
-    if (remainingPath.empty()) return;
+    // 🎯 呼叫工廠接口生成蛋
+    auto egg = EnemyFactory::CreateEgg(remainingPath, spawnPos);
 
-    // 這裡編譯器能完美看清 EnemyFactory 內的所有靜態函式
-    auto egg = EnemyFactory::CreateEgg(remainingPath, GetPosition());
     if (egg) {
-        m_LevelEnemyList->push_back(egg);
+        // 🎯 將新生成的蛋動態注入實時的敵人 Vector 中
+        enemies.push_back(egg);
     }
 }

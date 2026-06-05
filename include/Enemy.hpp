@@ -12,7 +12,7 @@ class Soldier;
 
 class Enemy : public Unit {
 public:
-    enum class Type { GOBLIN, ORC, WULF, SHAMAN, OGRE, WORG, BANDIT, BRIGAND, MARAUDER, GIANT_SPIDER, SPIDER_MATRIARCH, EGG };
+    enum class Type { GOBLIN, ORC, WULF, SHAMAN, OGRE, WORG, BANDIT, BRIGAND, MARAUDER, GIANT_SPIDER, SPIDER_MATRIARCH, EGG, SPIDERLING };
     enum class State { MOVE_RIGHT, MOVE_UP, MOVE_DOWN, ATTACK, SKILL, DEATH };
     enum class DamageType { PHYSICAL, MAGIC };
 

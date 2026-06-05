@@ -76,6 +76,7 @@ add_executable(${PROJECT_NAME}
         include/MageSkill/FireballProjectile.hpp
         include/UpgradeMenu.hpp
         src/UpgradeMenu.cpp
+        src/Egg.cpp
 )
 
 if(MSVC)
