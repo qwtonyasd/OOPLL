@@ -38,7 +38,7 @@ void App::Update() {
 }
 
 void App::HandleSelectLevel() {
-    int maxUnlocked = 3;
+    int maxUnlocked = 5;
     int selected = m_WorldMap->Update(maxUnlocked);
     m_WorldMap->Draw(maxUnlocked);
 
