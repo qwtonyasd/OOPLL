@@ -14,16 +14,8 @@
 
 class Projectile : public Util::GameObject {
 public:
-    enum class MoveType {
-        PARABOLA_ROTATE, // A類：拋物線 + 旋轉 (箭矢)
-        PARABOLA_SIMPLE, // B類: 純拋物線 (炸彈)
-        STRAIGHT         // C類: 直線 (魔法彈)
-    };
-
-    enum class HitType {
-        SINGLE,          // E類: 單體
-        AREA             // D類: 範圍 (AOE)
-    };
+    enum class MoveType { PARABOLA_ROTATE, PARABOLA_SIMPLE, STRAIGHT };
+    enum class HitType { SINGLE, AREA };
 
     Projectile(MoveType move, HitType hit, glm::vec2 start, std::shared_ptr<Enemy> target,
                float damage, float duration, float arcHeight,
@@ -31,12 +23,17 @@ public:
                std::vector<std::shared_ptr<Enemy>>* allEnemies = nullptr)
         : m_MoveType(move), m_HitType(hit), m_StartPos(start), m_Target(target),
           m_AllEnemies(allEnemies), m_Damage(damage), m_FlightDuration(duration),
-          m_MaxArcHeight(arcHeight), m_HitFrames(hitFrames) { // 按照宣告順序初始化
+          m_MaxArcHeight(arcHeight) {
 
         m_Transform.translation = start;
         m_ZIndex = 100.0f;
         SetDrawable(std::make_shared<Util::Image>(spritePath));
-        if (m_Target) m_FinalLandPos = m_Target->GetPosition();
+
+        m_FinalLandPos = (m_Target) ? m_Target->GetPosition() : start;
+
+        for (const auto& path : hitFrames) {
+            m_HitImages.push_back(std::make_shared<Util::Image>(path));
+        }
     }
 
     void Update() {
@@ -57,32 +54,28 @@ private:
         m_ElapsedTime += dt;
         float progress = std::clamp(m_ElapsedTime / m_FlightDuration, 0.0f, 1.0f);
 
-        // 如果目標還活著，更新最終落點（追蹤效果）
         if (m_Target && m_Target->GetHP() > 0) {
             m_FinalLandPos = m_Target->GetPosition();
         }
 
-        glm::vec2 oldPos = m_Transform.translation; // 紀錄移動前的位置
+        glm::vec2 oldPos = m_Transform.translation;
         glm::vec2 currentGroundPos = glm::mix(m_StartPos, m_FinalLandPos, progress);
 
-        float height = 0.0f;
-        if (m_MoveType != MoveType::STRAIGHT) {
-            height = m_MaxArcHeight * std::sin(progress * glm::pi<float>());
-        }
+        float height = (m_MoveType != MoveType::STRAIGHT) ?
+                        m_MaxArcHeight * std::sin(progress * glm::pi<float>()) : 0.0f;
 
-        m_Transform.translation = currentGroundPos;
-        m_Transform.translation.y += height;
+        m_Transform.translation = currentGroundPos + glm::vec2(0, height);
 
-        // --- 核心修正：計算面向角度 ---
-        // 無論是箭矢 (PARABOLA_ROTATE) 還是魔法彈 (STRAIGHT)，都計算面向位移方向
-        if (m_MoveType == MoveType::PARABOLA_ROTATE || m_MoveType == MoveType::STRAIGHT) {
-            glm::vec2 dir = m_Transform.translation - oldPos; // 計算這幀移動的向量
+        if (m_MoveType != MoveType::PARABOLA_SIMPLE) {
+            glm::vec2 dir = m_Transform.translation - oldPos;
             if (glm::length(dir) > 0.0001f) {
                 m_Transform.rotation = std::atan2(dir.y, dir.x);
             }
         }
 
-        if (progress >= 1.0f) HandleImpact();
+        if (progress >= 1.0f) {
+            HandleImpact();
+        }
     }
 
     void HandleImpact() {
@@ -91,32 +84,43 @@ private:
 
         if (m_HitType == HitType::AREA && m_AllEnemies) {
             for (auto& enemy : *m_AllEnemies) {
-                if (enemy && glm::distance(m_Transform.translation, enemy->GetPosition()) < 50.0f) {
-                    enemy->TakeDamage(m_Damage, Enemy::DamageType::PHYSICAL);
+                if (enemy && enemy->GetHP() > 0 && glm::distance(m_Transform.translation, enemy->GetPosition()) < 50.0f) {
+                    enemy->TakeDamage(m_Damage);
                 }
             }
         } else if (m_Target && m_Target->GetHP() > 0) {
-            m_Target->TakeDamage(m_Damage, Enemy::DamageType::PHYSICAL);
+            m_Target->TakeDamage(m_Damage);
         }
     }
 
     void UpdateHitAnimation(float dt) {
         m_HitTimer += dt;
+        // 計算當前幀數
         size_t frame = static_cast<size_t>(m_HitTimer / 0.05f);
-        if (frame < m_HitFrames.size()) {
-            SetDrawable(std::make_shared<Util::Image>(m_HitFrames[frame]));
+
+        // [關鍵修正]：在存取 vector 之前檢查邊界
+        if (!m_HitImages.empty()) {
+            if (frame < m_HitImages.size()) {
+                SetDrawable(m_HitImages[frame]);
+            } else {
+                // 如果幀數已超過最後一幀，代表動畫結束
+                m_IsActive = false;
+            }
         } else {
+            // 如果沒有爆炸動畫素材，擊中後直接消滅
             m_IsActive = false;
         }
     }
 
-    MoveType m_MoveType; HitType m_HitType;
-    glm::vec2 m_StartPos; glm::vec2 m_FinalLandPos;
+    MoveType m_MoveType;
+    HitType m_HitType;
+    glm::vec2 m_StartPos;
+    glm::vec2 m_FinalLandPos;
     std::shared_ptr<Enemy> m_Target;
     std::vector<std::shared_ptr<Enemy>>* m_AllEnemies;
-    float m_Damage; float m_ElapsedTime = 0.0f;
-    float m_FlightDuration; float m_MaxArcHeight;
-    bool m_IsActive = true; bool m_IsHitting = false;
-    float m_HitTimer = 0.0f; std::vector<std::string> m_HitFrames;
+    float m_Damage, m_ElapsedTime = 0.0f, m_FlightDuration, m_MaxArcHeight;
+    bool m_IsActive = true, m_IsHitting = false;
+    float m_HitTimer = 0.0f;
+    std::vector<std::shared_ptr<Util::Image>> m_HitImages;
 };
 #endif

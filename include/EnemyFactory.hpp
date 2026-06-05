@@ -96,6 +96,18 @@ public:
                 generatePaths("Worg", 11227, 11241)
             );
         }
+        else if (type == Enemy::Type::WULF) {
+            std::vector<std::vector<std::string>> moveAnis = {
+                generatePaths("Wulf", 1, 8),
+                generatePaths("Wulf", 14, 18),
+                generatePaths("Wulf", 9, 13)
+            };
+            return std::make_shared<Enemy>(
+                type, path, 80.0f, 45.0f, moveAnis,
+                generatePaths("Shaman", 1, 12),
+                generatePaths("Wulf", 29, 37)
+            );
+        }
         else if (type == Enemy::Type::SHAMAN) {
             std::vector<std::vector<std::string>> moveAnis = {
                 generatePaths("Shaman", 1, 12),

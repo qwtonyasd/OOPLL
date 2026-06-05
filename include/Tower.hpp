@@ -89,10 +89,11 @@ public:
 
     // 移除 override，因為報錯顯示父類別可能沒有 virtual Draw() 或簽名不符
     // 我們手動呼叫它來維持本體的繪製
-    virtual void Draw() {
+    virtual void Draw()  {
+        // 如果塔沒有被選中，則不繪製選單與範圍圈
         if (!m_IsSelected) return;
 
-        // 1. 範圍圈 (底層)
+        // 1. 範圍圈 (底層) - 檢查指標是否存在
         if (m_RangeIndicatorImage) {
             float scale = m_Range / 125.0f;
             m_RangeIndicatorImage->Draw(Util::ConvertToUniformBufferData(
@@ -100,30 +101,31 @@ public:
                 m_RangeIndicatorImage->GetSize(), 5.0f));
         }
 
-        // 2. 升級選單圓環 (中層)
+        // 2. 升級選單圓環 (中層) - 檢查指標是否存在
         if (m_UpgradeMenuImage) {
             m_UpgradeMenuImage->Draw(Util::ConvertToUniformBufferData(
                 Util::Transform{m_Transform.translation + glm::vec2(0, 5), 0, {1.1f, 1.1f}},
                 m_UpgradeMenuImage->GetSize(), 16.0f));
         }
 
-        // 3. 升級標誌 (上方)
+        // 3. 升級標誌 (上方) - 確保圖示存在且未達最高等級
         if (m_UpgradeIcon && m_Level < m_MaxLevel) {
             m_UpgradeIcon->Draw(Util::ConvertToUniformBufferData(
                 Util::Transform{m_Transform.translation + glm::vec2(0.0f, 60.0f), 0, {0.8f, 0.8f}},
                 m_UpgradeIcon->GetSize(), 18.0f));
         }
 
-        // 4. 出售標誌 (下方)
+        // 4. 出售標誌 (下方) - 檢查圖示是否存在
         if (m_SellIcon) {
             m_SellIcon->Draw(Util::ConvertToUniformBufferData(
                 Util::Transform{m_Transform.translation + glm::vec2(0.0f, -55.0f), 0, {0.8f, 0.8f}},
                 m_SellIcon->GetSize(), 18.0f));
         }
 
-        // 5. 價格文字 (最頂層)
-        if (m_CostText != nullptr) {
+        // 5. 價格文字 (最頂層) - 加入 nullptr 檢查與大小檢查
+        if (m_CostText) {
             auto textSize = m_CostText->GetSize();
+            // 只有當文字有寬度時才嘗試繪製，避免異常狀態
             if (textSize.x > 0) {
                 m_CostText->Draw(Util::ConvertToUniformBufferData(
                     Util::Transform{m_Transform.translation + glm::vec2(5.0f, 40.0f), 0, {0.5f, 0.5f}},

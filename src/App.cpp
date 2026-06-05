@@ -92,12 +92,12 @@ void App::HandleGamePlay() {
             return;
         }
     } else {
+        // --- 1. 更新邏輯 ---
         m_SpellManager->Update(dt, m_Enemies);
 
         int currentWaveIdx = gm.GetCurrentWave() - 1;
         if (currentWaveIdx < static_cast<int>(m_Waves.size())) {
             auto& waveConfig = m_Waves[currentWaveIdx];
-
             if (!m_IsWaveActive) {
                 if (m_Enemies.empty()) {
                     m_WaveBreakTimer += dt;
@@ -121,63 +121,57 @@ void App::HandleGamePlay() {
                         ++it;
                     }
                 }
-
                 if (m_PendingSubWaves.empty() && m_Enemies.empty()) {
                     m_IsWaveActive = false;
-                    if (gm.GetCurrentWave() < static_cast<int>(m_Waves.size())) {
-                        gm.NextWave();
-                    } else {
-                        m_VictoryMenu->SetVisible(true, gm.GetHealth());
-                    }
+                    if (gm.GetCurrentWave() < static_cast<int>(m_Waves.size())) gm.NextWave();
+                    else m_VictoryMenu->SetVisible(true, gm.GetHealth());
                 }
             }
         }
 
         m_TowerManager->UpdateAll(m_Enemies, m_Projectiles);
 
-        // 更新援軍小兵
-        for (auto it = m_ActiveReinforcements.begin(); it != m_ActiveReinforcements.end(); ) {
-            auto& soldier = *it;
-            if (soldier) {
-                soldier->Update(m_Enemies, dt);
-                if (soldier->GetHP() <= 0 && soldier->IsDeadAnimationFinished()) {
-                    soldier->ReleaseEnemy();
-                    it = m_ActiveReinforcements.erase(it);
-                    continue;
-                }
-            }
-            ++it;
-        }
+        // --- 2. 安全更新與清理階段 ---
 
-        for (auto it = m_Projectiles.begin(); it != m_Projectiles.end(); ) {
-            (*it)->Update();
-            if (!(*it)->IsActive()) it = m_Projectiles.erase(it);
-            else ++it;
-        }
+        // 清理援軍
+        m_ActiveReinforcements.erase(
+            std::remove_if(m_ActiveReinforcements.begin(), m_ActiveReinforcements.end(),
+                [&](auto& soldier) {
+                    if (!soldier) return true;
+                    soldier->Update(m_Enemies, dt);
+                    if (soldier->GetHP() <= 0 && soldier->IsDeadAnimationFinished()) {
+                        soldier->ReleaseEnemy();
+                        return true;
+                    }
+                    return false;
+                }), m_ActiveReinforcements.end());
 
-        // 更新敵人
-        for (auto it = m_Enemies.begin(); it != m_Enemies.end(); ) {
-            (*it)->Update(m_Enemies, dt);
+        // 清理投射物
+        m_Projectiles.erase(
+            std::remove_if(m_Projectiles.begin(), m_Projectiles.end(),
+                [&](auto& p) { p->Update(); return !p->IsActive(); }),
+            m_Projectiles.end());
 
-            if ((*it)->ReachedEnd()) {
-                gm.TakeDamage(1);
-                it = m_Enemies.erase(it);
-            } else if ((*it)->GetHP() <= 0 && (*it)->IsDeadAnimationFinished()) {
-                gm.AddMoney((*it)->GetType() == Enemy::Type::GOBLIN ? 3 : 9);
-                it = m_Enemies.erase(it);
-            } else {
-                ++it;
-            }
-        }
+        // 清理敵人 (核心修正：確保更新時不直接刪除容器)
+        m_Enemies.erase(
+            std::remove_if(m_Enemies.begin(), m_Enemies.end(),
+                [&](auto& enemy) {
+                    enemy->Update(m_Enemies, dt);
+                    bool shouldRemove = enemy->ReachedEnd() ||
+                                       (enemy->GetHP() <= 0 && enemy->IsDeadAnimationFinished());
+                    if (shouldRemove) {
+                        if (enemy->ReachedEnd()) gm.TakeDamage(0);
+                        else gm.AddMoney(enemy->GetType() == Enemy::Type::GOBLIN ? 3 : 9);
+                    }
+                    return shouldRemove;
+                }),
+            m_Enemies.end());
 
+        // --- 3. 輸入處理 ---
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
-
         if (Util::Input::IsKeyDown(Util::Keycode::NUM_1)) m_SpellManager->SelectFireball();
         if (Util::Input::IsKeyDown(Util::Keycode::NUM_2)) m_SpellManager->SelectReinforce();
-
-        if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_RB)) {
-            m_SpellManager->CancelSelection();
-        }
+        if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_RB)) m_SpellManager->CancelSelection();
 
         if (m_BuildMenu->IsVisible()) {
             Tower::Type selectedType = m_BuildMenu->Update();
@@ -191,41 +185,29 @@ void App::HandleGamePlay() {
                 }
                 m_BuildMenu->SetVisible(false);
                 m_SelectedSlot = nullptr;
-            }
-            else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+            } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
                 if (glm::distance(mousePos, m_BuildMenu->GetTransform().translation) > 100.0f) {
                     m_BuildMenu->SetVisible(false);
                     m_SelectedSlot = nullptr;
                 }
             }
-        }
-        else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+        } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
             SpellManager::SpellType clickedSpell = m_Hud->HandleClick(mousePos);
-
             if (clickedSpell != SpellManager::SpellType::NONE) {
-                if (clickedSpell == SpellManager::SpellType::FIREBALL) {
-                    m_SpellManager->SelectFireball();
-                }
-                else if (clickedSpell == SpellManager::SpellType::REINFORCE) {
-                    m_SpellManager->SelectReinforce();
-                }
-            }
-            else if (m_SpellManager->GetSelectedSpell() != SpellManager::SpellType::NONE) {
+                if (clickedSpell == SpellManager::SpellType::FIREBALL) m_SpellManager->SelectFireball();
+                else if (clickedSpell == SpellManager::SpellType::REINFORCE) m_SpellManager->SelectReinforce();
+            } else if (m_SpellManager->GetSelectedSpell() != SpellManager::SpellType::NONE) {
                 m_SpellManager->CastCurrentSpell(mousePos, m_Enemies, m_ActiveReinforcements);
-            }
-            else {
+            } else {
                 bool upgradeHandled = false;
                 for (auto& tower : m_TowerManager->GetTowers()) {
                     if (tower->GetIsSelected() && tower->IsUpgradeClicked(mousePos)) {
                         int cost = tower->GetUpgradeCost();
-                        if (gm.SpendMoney(cost)) {
-                            tower->Upgrade();
-                        }
+                        if (gm.SpendMoney(cost)) tower->Upgrade();
                         upgradeHandled = true;
                         break;
                     }
                 }
-
                 if (!upgradeHandled) {
                     if (!m_TowerManager->HandleClick(mousePos)) {
                         bool hitSlot = false;
@@ -239,34 +221,27 @@ void App::HandleGamePlay() {
                                 break;
                             }
                         }
-                        if (!hitSlot) {
-                            m_TowerManager->ClearSelection();
-                        }
+                        if (!hitSlot) m_TowerManager->ClearSelection();
                     }
                 }
             }
         }
     }
 
+    // --- 4. 繪圖階段 ---
     m_MapManager->Draw();
     for (auto& slot : m_TowerSlots) slot->Draw();
     m_TowerManager->DrawAll();
-
-    for (auto& soldier : m_ActiveReinforcements) {
-        if (soldier) soldier->Draw();
-    }
-
+    for (auto& soldier : m_ActiveReinforcements) if (soldier) soldier->Draw();
     for (auto& enemy : m_Enemies) enemy->Draw();
     for (auto& proj : m_Projectiles) proj->Draw();
     m_SpellManager->Draw();
     if (m_BuildMenu->IsVisible()) m_BuildMenu->Draw();
-
     if (m_Hud) m_Hud->Draw(m_SpellManager);
     if (m_VictoryMenu->IsVisible()) m_VictoryMenu->Draw();
 
     if (Util::Input::IsKeyDown(Util::Keycode::BACKSPACE)) m_IsInGame = false;
 }
-
 void App::ChangeLevel(int levelId) {
     m_CurrentLevelID = levelId;
     auto newMap = MapFactory::CreateLevel(levelId);

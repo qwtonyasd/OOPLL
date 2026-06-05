@@ -242,20 +242,19 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
     std::shared_ptr<Enemy> bestFreeEnemy = nullptr;
     std::shared_ptr<Enemy> bestBlockedEnemy = nullptr;
 
-    // 寬容的動態搜尋半徑，確保三人陣形邊緣的小兵看得見彼此的怪
     float extendedRange = m_Config.detectionRange + 30.0f;
     float minFreeDist = extendedRange;
     float minBlockedDist = extendedRange;
 
     for (auto& enemy : enemies) {
+        // [關鍵防禦]：這是閃退的保命符，確保進入邏輯前指標絕對有效
         if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) continue;
 
+        // 在存取 enemy->GetPosition() 之前，上面的 if 已經確保它是安全的
         float distToMe = glm::distance(m_Transform.translation, enemy->GetPosition());
         float distToRally = glm::distance(m_RallyPoint, enemy->GetPosition());
 
-        // 使用擴展後的動態偵測範圍，消除陣形偏移（Formation Offset）造成的死角
         if (distToMe < extendedRange || distToRally < extendedRange) {
-
             if (!enemy->IsBlocked()) {
                 if (distToMe < minFreeDist) {
                     minFreeDist = distToMe;
@@ -270,7 +269,7 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
         }
     }
 
-    // 策略 A：攔截自由怪
+    // [安全性檢查]：在傳遞 bestFreeEnemy 之前，不用擔心 nullptr，因為前面的 logic 已經確保它如果被賦值就是有效的
     if (bestFreeEnemy) {
         if (m_TargetEnemy && m_TargetEnemy != bestFreeEnemy && !m_IsMainBlocker) {
             ReleaseEnemy();
@@ -282,7 +281,6 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
         return;
     }
 
-    // 策略 B：加入圍毆
     if (bestBlockedEnemy) {
         if (!m_TargetEnemy) {
             EngageTarget(bestBlockedEnemy);

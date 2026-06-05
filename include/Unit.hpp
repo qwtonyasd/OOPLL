@@ -15,8 +15,13 @@ class Enemy;
 class Unit : public Util::GameObject {
 public:
     Unit(const std::vector<glm::vec2>& path, float speed, float hp)
-        : m_Path(path), m_Speed(speed), m_HP(hp), m_MaxHP(hp) {
-        if (!m_Path.empty()) m_Transform.translation = m_Path[0];
+    : m_Path(path), m_Speed(speed), m_HP(hp), m_MaxHP(hp) {
+        // [關鍵修復]：如果路徑是空的，給一個預設位置，防止後面崩潰
+        if (!m_Path.empty()) {
+            m_Transform.translation = m_Path[0];
+        } else {
+            m_Transform.translation = {0, 0}; // 預設值
+        }
         m_ZIndex = 15.0f;
     }
 

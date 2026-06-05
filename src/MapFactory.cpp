@@ -80,7 +80,14 @@ std::shared_ptr<Map> MapFactory::CreateLevel(int levelId) {
         for(int i=0; i<12; i++) { w3.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::GOBLIN}, d3); d3 += 0.6f; }
         config.waves.push_back(w3);
 
-        addW2(std::vector<Enemy::Type>(6, Enemy::Type::WULF), 0.4f);
+        WaveConfig w4; float d4 = 0;
+        for(int i = 0; i < 6; i++) {
+            w4.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::WULF}, d4);
+            d4 += 0.4f;
+        }
+        config.waves.push_back(w4);
+
+
 
         WaveConfig w5; float d5 = 0;
         for(int i=0; i<6; i++) { w5.subWaves.emplace_back(randomRoute(0, 2), std::vector<Enemy::Type>{Enemy::Type::ORC}, d5); d5 += 1.2f; }
