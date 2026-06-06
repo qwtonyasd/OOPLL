@@ -23,7 +23,7 @@ void App::Start() {
 
     m_UpgradeMenu = std::make_unique<UpgradeMenu>();
 
-    // 🎯 新增：載入音樂檔案資源
+    // 🎯 載入音樂檔案資源
     m_BgmMainMenu   = std::make_shared<Util::BGM>("../PTSD/assets/audio/256_Music_MainMenu.mp3");
     m_BgmUnderAttack = std::make_shared<Util::BGM>("../PTSD/assets/audio/252_Music_UnderAttack.mp3");
     m_BgmEndGame    = std::make_shared<Util::BGM>("../PTSD/assets/audio/257_Music_EndGame.mp3");
@@ -75,7 +75,7 @@ void App::HandleSelectLevel() {
         LOG_INFO("Entering Level: {}", selected);
         ChangeLevel(selected);
         m_IsInGame = true;
-        // 🎯 新增：進入關卡戰鬥，切換為 UnderAttack 音樂
+        // 🎯 進入關卡戰鬥，切換為 UnderAttack 音樂
         ChangeMusic(MusicState::GAME_PLAY);
     }
     else if (selected == -1) {
@@ -90,163 +90,176 @@ void App::HandleGamePlay() {
     if (dt > 0.1f) dt = 0.016f;
     auto currentMap = m_MapManager->GetCurrentMap();
 
+    // 🎯 核心修改一：即時戰敗攔截判定 (加入出怪與波次防護判定，防止剛進關卡時血量預設為 0 的空檔誤判)
+    if (m_IsInGame && (m_IsWaveActive || !m_Enemies.empty()) && gm.GetHealth() <= 0 && !m_VictoryMenu->IsVisible()) {
+        m_VictoryMenu->SetVisible(true, 0); // 傳入 0 觸發顯示失敗畫面 (21.png)
+        ChangeMusic(MusicState::END_GAME);  // 切換至結算音樂
+    }
+
+    // 🎯 核心修改二：結算面板（不論勝敗）顯示時的「定格阻斷」邏輯
     if (m_VictoryMenu->IsVisible()) {
         m_VictoryMenu->Update();
-        if (m_VictoryMenu->IsRestartPressed()) {
-            ChangeLevel(m_CurrentLevelID);
-            // 🎯 新增：重新關卡時，確保音樂重置回關卡戰鬥音樂
-            ChangeMusic(MusicState::GAME_PLAY);
-            return;
-        }
-        if (m_VictoryMenu->IsContinuePressed()) {
-            m_IsInGame = false;
-            m_VictoryMenu->SetVisible(false, 0);
-            m_VictoryMenu->ResetFlags();
-            // 🎯 新增：離開結算畫面回到地圖選關時，切換為 MainMenu 音樂
-            ChangeMusic(MusicState::MAIN_MENU);
-            return;
-        }
-    } else {
-        // --- 1. 更新邏輯 ---
-        m_SpellManager->Update(dt, m_Enemies);
 
-        int currentWaveIdx = gm.GetCurrentWave() - 1;
-        if (currentWaveIdx < static_cast<int>(m_Waves.size())) {
-            auto& waveConfig = m_Waves[currentWaveIdx];
-            if (!m_IsWaveActive) {
-                if (m_Enemies.empty()) {
-                    m_WaveBreakTimer += dt;
-                    if (m_WaveBreakTimer >= 3.0f) {
-                        m_IsWaveActive = true;
-                        m_WaveTimer = 0.0f;
-                        m_WaveBreakTimer = 0.0f;
-                        m_PendingSubWaves = waveConfig.subWaves;
-                    }
+        // 功能一：再打一次 (TRY AGAIN)
+        if (m_VictoryMenu->IsRestartPressed()) {
+            ChangeLevel(m_CurrentLevelID);       // 重新載入當前關卡
+            ChangeMusic(MusicState::GAME_PLAY);  // 音樂切回 UnderAttack 戰鬥曲
+            m_VictoryMenu->ResetFlags();
+            return;
+        }
+
+        // 功能二：跳到主頁面 (QUIT)
+        if (m_VictoryMenu->IsContinuePressed()) {
+            m_IsInGame = false;                  // 離開遊戲關卡狀態
+            m_VictoryMenu->SetVisible(false, 0); // 隱藏面板
+            m_VictoryMenu->ResetFlags();
+            ChangeMusic(MusicState::MAIN_MENU);  // 音樂切回主選單 MainMenu
+            return;
+        }
+
+        return; // 🔥 阻斷點：面板顯示時直接返回，不讓下方的任何怪物與防禦塔執行 Update
+    }
+
+    // =========================================================================
+    // 💡 遊戲核心更新迴圈（只有在活著且面板未開啟時，才會繼續執行）
+    // =========================================================================
+
+    // --- 1. 更新邏輯 ---
+    m_SpellManager->Update(dt, m_Enemies);
+
+    int currentWaveIdx = gm.GetCurrentWave() - 1;
+    if (currentWaveIdx < static_cast<int>(m_Waves.size())) {
+        auto& waveConfig = m_Waves[currentWaveIdx];
+        if (!m_IsWaveActive) {
+            if (m_Enemies.empty()) {
+                m_WaveBreakTimer += dt;
+                if (m_WaveBreakTimer >= 3.0f) {
+                    m_IsWaveActive = true;
+                    m_WaveTimer = 0.0f;
+                    m_WaveBreakTimer = 0.0f;
+                    m_PendingSubWaves = waveConfig.subWaves;
                 }
-            } else {
-                m_WaveTimer += dt;
-                for (auto it = m_PendingSubWaves.begin(); it != m_PendingSubWaves.end(); ) {
-                    if (m_WaveTimer >= it->spawnDelay) {
-                        const auto& route = currentMap->GetRouteByIndex(it->routeIndex);
-                        for (auto& enemyType : it->enemies) {
-                            m_Enemies.push_back(EnemyFactory::Create(enemyType, route));
-                        }
-                        it = m_PendingSubWaves.erase(it);
-                    } else {
-                        ++it;
+            }
+        } else {
+            m_WaveTimer += dt;
+            for (auto it = m_PendingSubWaves.begin(); it != m_PendingSubWaves.end(); ) {
+                if (m_WaveTimer >= it->spawnDelay) {
+                    const auto& route = currentMap->GetRouteByIndex(it->routeIndex);
+                    for (auto& enemyType : it->enemies) {
+                        m_Enemies.push_back(EnemyFactory::Create(enemyType, route));
                     }
+                    it = m_PendingSubWaves.erase(it);
+                } else {
+                    ++it;
                 }
-                if (m_PendingSubWaves.empty() && m_Enemies.empty()) {
-                    m_IsWaveActive = false;
-                    if (gm.GetCurrentWave() < static_cast<int>(m_Waves.size())) {
-                        gm.NextWave();
-                    } else {
-                        m_VictoryMenu->SetVisible(true, gm.GetHealth());
-                        // 🎯 新增：通關所有波次，彈出勝利結算畫面時切換為 EndGame 音樂
-                        ChangeMusic(MusicState::END_GAME);
-                    }
+            }
+            if (m_PendingSubWaves.empty() && m_Enemies.empty()) {
+                m_IsWaveActive = false;
+                if (gm.GetCurrentWave() < static_cast<int>(m_Waves.size())) {
+                    gm.NextWave();
+                } else {
+                    // 通關所有波次，彈出勝利結算畫面
+                    m_VictoryMenu->SetVisible(true, gm.GetHealth());
+                    ChangeMusic(MusicState::END_GAME);
                 }
             }
         }
+    }
 
-        // 🎯 新增判定：如果中途血量歸零戰敗，彈出結算畫面時也要切換為 EndGame 音樂
-        if (gm.GetHealth() <= 0) {
-            m_VictoryMenu->SetVisible(true, 0);
-            ChangeMusic(MusicState::END_GAME);
-        }
+    m_TowerManager->UpdateAll(m_Enemies, m_Projectiles);
 
-        m_TowerManager->UpdateAll(m_Enemies, m_Projectiles);
+    // --- 2. 安全更新與清理階段 ---
+    m_ActiveReinforcements.erase(
+        std::remove_if(m_ActiveReinforcements.begin(), m_ActiveReinforcements.end(),
+            [&](auto& soldier) {
+                if (!soldier) return true;
+                soldier->Update(m_Enemies, dt);
+                if (soldier->GetHP() <= 0 && soldier->IsDeadAnimationFinished()) {
+                    soldier->ReleaseEnemy();
+                    return true;
+                }
+                return false;
+            }), m_ActiveReinforcements.end());
 
-        // --- 2. 安全更新與清理階段 ---
-        m_ActiveReinforcements.erase(
-            std::remove_if(m_ActiveReinforcements.begin(), m_ActiveReinforcements.end(),
-                [&](auto& soldier) {
-                    if (!soldier) return true;
-                    soldier->Update(m_Enemies, dt);
-                    if (soldier->GetHP() <= 0 && soldier->IsDeadAnimationFinished()) {
-                        soldier->ReleaseEnemy();
-                        return true;
-                    }
-                    return false;
-                }), m_ActiveReinforcements.end());
+    m_Projectiles.erase(
+        std::remove_if(m_Projectiles.begin(), m_Projectiles.end(),
+            [&](auto& p) { p->Update(); return !p->IsActive(); }),
+        m_Projectiles.end());
 
-        m_Projectiles.erase(
-            std::remove_if(m_Projectiles.begin(), m_Projectiles.end(),
-                [&](auto& p) { p->Update(); return !p->IsActive(); }),
-            m_Projectiles.end());
-
-        m_Enemies.erase(
-            std::remove_if(m_Enemies.begin(), m_Enemies.end(),
-                [&](auto& enemy) {
-                    enemy->Update(m_Enemies, dt);
-                    bool shouldRemove = enemy->ReachedEnd() ||
-                                       (enemy->GetHP() <= 0 && enemy->IsDeadAnimationFinished());
-                    if (shouldRemove) {
-                        if (enemy->ReachedEnd()) gm.TakeDamage(0);
-                        else gm.AddMoney(enemy->GetType() == Enemy::Type::GOBLIN ? 3 : 9);
-                    }
-                    return shouldRemove;
-                }),
-            m_Enemies.end());
-
-        Egg::ClearSpawnQueue(m_Enemies);
-
-        // --- 3. 輸入處理 ---
-        glm::vec2 mousePos = Util::Input::GetCursorPosition();
-        if (Util::Input::IsKeyDown(Util::Keycode::NUM_1)) m_SpellManager->SelectFireball();
-        if (Util::Input::IsKeyDown(Util::Keycode::NUM_2)) m_SpellManager->SelectReinforce();
-        if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_RB)) m_SpellManager->CancelSelection();
-
-        if (m_BuildMenu->IsVisible()) {
-            Tower::Type selectedType = m_BuildMenu->Update();
-            if (selectedType != Tower::Type::NONE) {
-                if (m_SelectedSlot) {
-                    int cost = Tower::GetBaseCost(selectedType);
-                    if (gm.SpendMoney(cost)) {
-                        m_TowerManager->AddTower(selectedType, m_SelectedSlot->GetPosition(), {});
-                        m_SelectedSlot->SetOccupied(true);
+    m_Enemies.erase(
+        std::remove_if(m_Enemies.begin(), m_Enemies.end(),
+            [&](auto& enemy) {
+                enemy->Update(m_Enemies, dt);
+                bool shouldRemove = enemy->ReachedEnd() ||
+                                   (enemy->GetHP() <= 0 && enemy->IsDeadAnimationFinished());
+                if (shouldRemove) {
+                    if (enemy->ReachedEnd()) {
+                        gm.TakeDamage(0); // 扣血後如果歸零，下一影格最上方會立即捕捉定格
+                    } else {
+                        gm.AddMoney(enemy->GetType() == Enemy::Type::GOBLIN ? 3 : 9);
                     }
                 }
+                return shouldRemove;
+            }),
+        m_Enemies.end());
+
+    Egg::ClearSpawnQueue(m_Enemies);
+
+    // --- 3. 輸入處理 ---
+    glm::vec2 mousePos = Util::Input::GetCursorPosition();
+    if (Util::Input::IsKeyDown(Util::Keycode::NUM_1)) m_SpellManager->SelectFireball();
+    if (Util::Input::IsKeyDown(Util::Keycode::NUM_2)) m_SpellManager->SelectReinforce();
+    if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_RB)) m_SpellManager->CancelSelection();
+
+    if (m_BuildMenu->IsVisible()) {
+        Tower::Type selectedType = m_BuildMenu->Update();
+        if (selectedType != Tower::Type::NONE) {
+            if (m_SelectedSlot) {
+                int cost = Tower::GetBaseCost(selectedType);
+                if (gm.SpendMoney(cost)) {
+                    m_TowerManager->AddTower(selectedType, m_SelectedSlot->GetPosition(), {});
+                    m_SelectedSlot->SetOccupied(true);
+                }
+            }
+            m_BuildMenu->SetVisible(false);
+            m_SelectedSlot = nullptr;
+        } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+            if (glm::distance(mousePos, m_BuildMenu->GetTransform().translation) > 100.0f) {
                 m_BuildMenu->SetVisible(false);
                 m_SelectedSlot = nullptr;
-            } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-                if (glm::distance(mousePos, m_BuildMenu->GetTransform().translation) > 100.0f) {
-                    m_BuildMenu->SetVisible(false);
-                    m_SelectedSlot = nullptr;
+            }
+        }
+    } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+        SpellManager::SpellType clickedSpell = m_Hud->HandleClick(mousePos);
+        if (clickedSpell != SpellManager::SpellType::NONE) {
+            if (clickedSpell == SpellManager::SpellType::FIREBALL) m_SpellManager->SelectFireball();
+            else if (clickedSpell == SpellManager::SpellType::REINFORCE) m_SpellManager->SelectReinforce();
+        } else if (m_SpellManager->GetSelectedSpell() != SpellManager::SpellType::NONE) {
+            m_SpellManager->CastCurrentSpell(mousePos, m_Enemies, m_ActiveReinforcements);
+        } else {
+            bool upgradeHandled = false;
+            for (auto& tower : m_TowerManager->GetTowers()) {
+                if (tower->GetIsSelected() && tower->IsUpgradeClicked(mousePos)) {
+                    int cost = tower->GetUpgradeCost();
+                    if (gm.SpendMoney(cost)) tower->Upgrade();
+                    upgradeHandled = true;
+                    break;
                 }
             }
-        } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-            SpellManager::SpellType clickedSpell = m_Hud->HandleClick(mousePos);
-            if (clickedSpell != SpellManager::SpellType::NONE) {
-                if (clickedSpell == SpellManager::SpellType::FIREBALL) m_SpellManager->SelectFireball();
-                else if (clickedSpell == SpellManager::SpellType::REINFORCE) m_SpellManager->SelectReinforce();
-            } else if (m_SpellManager->GetSelectedSpell() != SpellManager::SpellType::NONE) {
-                m_SpellManager->CastCurrentSpell(mousePos, m_Enemies, m_ActiveReinforcements);
-            } else {
-                bool upgradeHandled = false;
-                for (auto& tower : m_TowerManager->GetTowers()) {
-                    if (tower->GetIsSelected() && tower->IsUpgradeClicked(mousePos)) {
-                        int cost = tower->GetUpgradeCost();
-                        if (gm.SpendMoney(cost)) tower->Upgrade();
-                        upgradeHandled = true;
-                        break;
-                    }
-                }
-                if (!upgradeHandled) {
-                    if (!m_TowerManager->HandleClick(mousePos)) {
-                        bool hitSlot = false;
-                        for (auto& slot : m_TowerSlots) {
-                            if (!slot->IsOccupied() && glm::distance(mousePos, slot->GetPosition()) < 50.0f) {
-                                m_SelectedSlot = slot;
-                                m_BuildMenu->SetPosition(slot->GetPosition());
-                                m_BuildMenu->SetVisible(true);
-                                m_TowerManager->ClearSelection();
-                                hitSlot = true;
-                                break;
-                            }
+            if (!upgradeHandled) {
+                if (!m_TowerManager->HandleClick(mousePos)) {
+                    bool hitSlot = false;
+                    for (auto& slot : m_TowerSlots) {
+                        if (!slot->IsOccupied() && glm::distance(mousePos, slot->GetPosition()) < 50.0f) {
+                            m_SelectedSlot = slot;
+                            m_BuildMenu->SetPosition(slot->GetPosition());
+                            m_BuildMenu->SetVisible(true);
+                            m_TowerManager->ClearSelection();
+                            hitSlot = true;
+                            break;
                         }
-                        if (!hitSlot) m_TowerManager->ClearSelection();
                     }
+                    if (!hitSlot) m_TowerManager->ClearSelection();
                 }
             }
         }
@@ -305,9 +318,10 @@ void App::ChangeLevel(int levelId) {
     if (m_VictoryMenu) m_VictoryMenu->SetVisible(false, 0);
 }
 
-// 🎯 新增：音訊狀態安全切換管理函式
+// 🎯 音訊狀態安全切換管理函式
 void App::ChangeMusic(MusicState targetMusic) {
-    if (m_CurrentMusicState == targetMusic) return; // 狀態相同就不重複調用，防止音樂瘋狂重播
+    if (m_CurrentMusicState == targetMusic) return;
+
     // 播放目標場景音樂
     switch (targetMusic) {
         case MusicState::MAIN_MENU:
@@ -321,7 +335,7 @@ void App::ChangeMusic(MusicState targetMusic) {
             break;
     }
 
-    m_CurrentMusicState = targetMusic; // 更新目前紀錄的音樂狀態
+    m_CurrentMusicState = targetMusic;
 }
 
 void App::End() {
