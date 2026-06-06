@@ -80,7 +80,6 @@ void Enemy::UpdateDirection(glm::vec2 dir) {
     }
 }
 
-// 其餘函式保持不變...
 void Enemy::MoveTowardsNextNode() {
     if (m_CurrentNodeIdx >= m_Path.size()) {
         m_ReachedEnd = true;
@@ -116,4 +115,32 @@ bool Enemy::IsDeadAnimationFinished() const {
     return !m_DeadAni || m_DeadAni->GetState() == Util::Animation::State::ENDED;
 }
 
-void Enemy::TakeDamage(float damage, DamageType) { m_HP -= damage; }
+// 🎯 核心修改：計算物理與魔法抗性的減傷實作
+void Enemy::TakeDamage(float damage, DamageType damageType) {
+    float finalDamage = damage;
+
+    if (damageType == DamageType::PHYSICAL) {
+        // 物理傷害依據護甲值（Armor Rating）進行減傷
+        if (m_Armor == DefenseLevel::MEDIUM) {
+            finalDamage *= 0.90f; // 減少 10% 傷害
+        } else if (m_Armor == DefenseLevel::HIGH) {
+            finalDamage *= 0.80f; // 減少 20% 傷害
+        }
+    }
+    else if (damageType == DamageType::MAGIC) {
+        // 魔法傷害依據魔抗（Magic Resistance）進行減傷
+        if (m_MagicRes == DefenseLevel::MEDIUM) {
+            finalDamage *= 0.90f; // 減少 10% 傷害
+        } else if (m_MagicRes == DefenseLevel::HIGH) {
+            finalDamage *= 0.80f; // 減少 20% 傷害
+        }
+    }
+
+    // 扣除最終計算後的傷害值
+    m_HP -= finalDamage;
+
+    if (m_HP <= 0) {
+        m_HP = 0;
+        OnDeath();
+    }
+}

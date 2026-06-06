@@ -40,7 +40,7 @@ std::shared_ptr<Map> MapFactory::CreateLevel(int levelId) {
             config.waves.push_back(wave);
         };
 
-        addW({Enemy::Type::SPIDER_MATRIARCH, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN}, 1.2f);
+        addW({Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN}, 1.2f);
         addW(std::vector<Enemy::Type>(6, Enemy::Type::GOBLIN), 0.8f);
         addW(std::vector<Enemy::Type>(9, Enemy::Type::GOBLIN), 0.8f);
         addW({Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::ORC}, 1.0f);

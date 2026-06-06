@@ -12,7 +12,6 @@
 
 class EnemyFactory {
 public:
-    // 提取為靜態成員函式，方便連續檔案名稱檢查
     static std::vector<std::string> generatePaths(const std::string& folder, int start, int end) {
         std::vector<std::string> paths;
         for (int i = start; i <= end; ++i) {
@@ -24,7 +23,6 @@ public:
         return paths;
     }
 
-    // 提取為靜態成員函式，專門讀取跳號（如偶數、奇數）的圖片路徑
     static std::vector<std::string> generateStepPaths(const std::string& folder, int start, int end, int step) {
         std::vector<std::string> paths;
         for (int i = start; i <= end; i += step) {
@@ -36,27 +34,24 @@ public:
         return paths;
     }
 
-    // 🎯 專門供蜘蛛女皇產卵時調用的卵生成工廠接口
     static std::shared_ptr<Enemy> CreateEgg(const std::vector<glm::vec2>& remainingPath, const glm::vec2& spawnPos) {
-        // 載入幼蛛的移動（12201 - 12253 奇數跳號）
         std::vector<std::vector<std::string>> spiderMoveAnis = {
-            generateStepPaths("Spider-Matriarch/egg", 12201, 12217, 2), // 向右
-            generateStepPaths("Spider-Matriarch/egg", 12219, 12235, 2), // 向上
-            generateStepPaths("Spider-Matriarch/egg", 12237, 12253, 2)  // 向下
+            generateStepPaths("Spider-Matriarch/egg", 12201, 12217, 2),
+            generateStepPaths("Spider-Matriarch/egg", 12219, 12235, 2),
+            generateStepPaths("Spider-Matriarch/egg", 12237, 12253, 2)
         };
 
-        // 幼蛛攻擊與死亡（12255 - 12319 奇數跳號）
         std::vector<std::string> spiderAttack = generateStepPaths("Spider-Matriarch/egg", 12255, 12281, 2);
         std::vector<std::string> spiderDead   = generateStepPaths("Spider-Matriarch/egg", 12309, 12319, 2);
-
-        // 蛋的孵化動畫（10569 到 10667 的奇數跳號）
         std::vector<std::string> eggHatch    = generateStepPaths("Spider-Matriarch/egg", 10569, 10667, 2);
 
-        // 幼蛛數值：速度極快（85.0f）、血量偏低（15.0f）
-        return std::make_shared<Egg>(
+        // 蛋繼承自 Enemy，數值設定（盾：無）
+        auto egg = std::make_shared<Egg>(
             Enemy::Type::EGG, remainingPath, 85.0f, 15.0f,
             spiderMoveAnis, spiderAttack, spiderDead, eggHatch, spawnPos
         );
+        egg->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::NONE);
+        return egg;
     }
 
     static std::shared_ptr<Enemy> Create(Enemy::Type type, const std::vector<glm::vec2>& path) {
@@ -66,11 +61,10 @@ public:
                 generatePaths("Goblin", 15788, 15810),
                 generatePaths("Goblin", 15764, 15786)
             };
-            return std::make_shared<Enemy>(
-                type, path, 45.0f, 20.0f, moveAnis,
-                generatePaths("Goblin", 15814, 15828),
-                generatePaths("Goblin", 15830, 15865)
-            );
+            auto enemy = std::make_shared<Enemy>(type, path, 45.0f, 20.0f, moveAnis,
+                generatePaths("Goblin", 15814, 15828), generatePaths("Goblin", 15830, 15865));
+            enemy->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::NONE);
+            return enemy;
         }
         else if (type == Enemy::Type::ORC) {
             std::vector<std::vector<std::string>> moveAnis = {
@@ -78,11 +72,10 @@ public:
                 generatePaths("Orc", 14934, 14956),
                 generatePaths("Orc", 14910, 14932)
             };
-            return std::make_shared<Enemy>(
-                type, path, 50.0f, 80.0f, moveAnis,
-                generatePaths("Orc", 14958, 14968),
-                generatePaths("Orc", 14970, 15004)
-            );
+            auto enemy = std::make_shared<Enemy>(type, path, 50.0f, 80.0f, moveAnis,
+                generatePaths("Orc", 14958, 14968), generatePaths("Orc", 14970, 15004));
+            enemy->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::NONE);
+            return enemy;
         }
         else if (type == Enemy::Type::WORG) {
             std::vector<std::vector<std::string>> moveAnis = {
@@ -90,11 +83,11 @@ public:
                 generateStepPaths("Worg", 11174, 11182, 2),
                 generateStepPaths("Worg", 11164, 11172, 2)
             };
-            return std::make_shared<Enemy>(
-                type, path, 80.0f, 45.0f, moveAnis,
-                generateStepPaths("Worg", 11184, 11202, 2),
-                generatePaths("Worg", 11227, 11241)
-            );
+            auto enemy = std::make_shared<Enemy>(type, path, 80.0f, 120.0f, moveAnis,
+                generateStepPaths("Worg", 11184, 11202, 2), generatePaths("Worg", 11227, 11241));
+            // 🎯 Worg: Magic Resistance Medium
+            enemy->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::MEDIUM);
+            return enemy;
         }
         else if (type == Enemy::Type::WULF) {
             std::vector<std::vector<std::string>> moveAnis = {
@@ -102,11 +95,10 @@ public:
                 generatePaths("Wulf", 14, 18),
                 generatePaths("Wulf", 9, 13)
             };
-            return std::make_shared<Enemy>(
-                type, path, 80.0f, 45.0f, moveAnis,
-                generatePaths("Shaman", 1, 12),
-                generatePaths("Wulf", 29, 37)
-            );
+            auto enemy = std::make_shared<Enemy>(type, path, 80.0f, 35.0f, moveAnis,
+                generatePaths("Shaman", 1, 12), generatePaths("Wulf", 29, 37));
+            enemy->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::NONE);
+            return enemy;
         }
         else if (type == Enemy::Type::SHAMAN) {
             std::vector<std::vector<std::string>> moveAnis = {
@@ -116,13 +108,12 @@ public:
             };
             std::vector<std::string> skillEffectPaths = generateStepPaths("Shaman", 10815, 10863, 2);
 
-            return std::make_shared<Shaman>(
-                type, path, 35.0f, 60.0f, moveAnis,
-                generatePaths("Shaman", 37, 44),
-                generatePaths("Shaman", 80, 84),
-                generatePaths("Shaman", 45, 67),
-                skillEffectPaths
-            );
+            auto enemy = std::make_shared<Shaman>(type, path, 35.0f, 100.0f, moveAnis,
+                generatePaths("Shaman", 37, 44), generatePaths("Shaman", 80, 84),
+                generatePaths("Shaman", 45, 67), skillEffectPaths);
+            // 🎯 Shaman: Magic Resistance High
+            enemy->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::HIGH);
+            return enemy;
         }
         else if (type == Enemy::Type::OGRE) {
             std::vector<std::vector<std::string>> moveAnis = {
@@ -130,11 +121,10 @@ public:
                 generateStepPaths("Ogre", 15062, 15086, 2),
                 generateStepPaths("Ogre", 15036, 15060, 2)
             };
-            return std::make_shared<Enemy>(
-                type, path, 30.0f, 350.0f, moveAnis,
-                generateStepPaths("Ogre", 15088, 15108, 2),
-                generateStepPaths("Ogre", 15136, 15154, 2)
-            );
+            auto enemy = std::make_shared<Enemy>(type, path, 30.0f, 800.0f, moveAnis,
+                generateStepPaths("Ogre", 15088, 15108, 2), generateStepPaths("Ogre", 15136, 15154, 2));
+            enemy->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::NONE);
+            return enemy;
         }
         else if (type == Enemy::Type::BANDIT) {
             std::vector<std::vector<std::string>> moveAnis = {
@@ -142,11 +132,10 @@ public:
                 generateStepPaths("Bandit", 18481, 18503, 2),
                 generateStepPaths("Bandit", 18457, 18479, 2)
             };
-            return std::make_shared<Enemy>(
-                type, path, 55.0f, 35.0f, moveAnis,
-                generateStepPaths("Bandit", 18505, 18509, 2),
-                generateStepPaths("Bandit", 18535, 18547, 2)
-            );
+            auto enemy = std::make_shared<Enemy>(type, path, 55.0f, 70.0f, moveAnis,
+                generateStepPaths("Bandit", 18505, 18509, 2), generateStepPaths("Bandit", 18535, 18547, 2));
+            enemy->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::NONE);
+            return enemy;
         }
         else if (type == Enemy::Type::BRIGAND) {
             std::vector<std::vector<std::string>> moveAnis = {
@@ -154,11 +143,11 @@ public:
                 generateStepPaths("Brigand", 17020, 17042, 2),
                 generateStepPaths("Brigand", 16996, 17018, 2)
             };
-            return std::make_shared<Enemy>(
-                type, path, 40.0f, 120.0f, moveAnis,
-                generateStepPaths("Brigand", 17044, 17056, 2),
-                generateStepPaths("Brigand", 17082, 17090, 2)
-            );
+            auto enemy = std::make_shared<Enemy>(type, path, 40.0f, 160.0f, moveAnis,
+                generateStepPaths("Brigand", 17044, 17056, 2), generateStepPaths("Brigand", 17082, 17090, 2));
+            // 🎯 Brigand: Armor Rating Medium
+            enemy->SetResistances(Enemy::DefenseLevel::MEDIUM, Enemy::DefenseLevel::NONE);
+            return enemy;
         }
         else if (type == Enemy::Type::MARAUDER) {
             std::vector<std::vector<std::string>> moveAnis = {
@@ -166,11 +155,11 @@ public:
                 generateStepPaths("Marauder", 15394, 15416, 2),
                 generateStepPaths("Marauder", 15370, 15392, 2)
             };
-            return std::make_shared<Enemy>(
-                type, path, 42.0f, 150.0f, moveAnis,
-                generateStepPaths("Marauder", 15418, 15432, 2),
-                generateStepPaths("Marauder", 15458, 15478, 2)
-            );
+            auto enemy = std::make_shared<Enemy>(type, path, 42.0f, 600.0f, moveAnis,
+                generateStepPaths("Marauder", 15418, 15432, 2), generateStepPaths("Marauder", 15458, 15478, 2));
+            // 🎯 Marauder: Armor Rating Medium
+            enemy->SetResistances(Enemy::DefenseLevel::MEDIUM, Enemy::DefenseLevel::NONE);
+            return enemy;
         }
         else if (type == Enemy::Type::GIANT_SPIDER) {
             std::vector<std::vector<std::string>> moveAnis = {
@@ -178,47 +167,36 @@ public:
                 generateStepPaths("Giant-Spider", 12487, 12503, 2),
                 generateStepPaths("Giant-Spider", 12475, 12485, 2)
             };
-            return std::make_shared<Enemy>(
-                type, path, 70.0f, 50.0f, moveAnis,
-                generateStepPaths("Giant-Spider", 12505, 12531, 2),
-                generateStepPaths("Giant-Spider", 12559, 12569, 2)
-            );
+            auto enemy = std::make_shared<Enemy>(type, path, 70.0f, 60.0f, moveAnis,
+                generateStepPaths("Giant-Spider", 12505, 12531, 2), generateStepPaths("Giant-Spider", 12559, 12569, 2));
+            // 🎯 Giant-Spider: Magic Resistance High
+            enemy->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::HIGH);
+            return enemy;
         }
-        // --- 新增 Spider-Matriarch 蜘蛛女皇 Boss ---
         else if (type == Enemy::Type::SPIDER_MATRIARCH) {
-            // 蜘蛛女皇移動動畫（皆為偶數跳號）
             std::vector<std::vector<std::string>> moveAnis = {
-                generateStepPaths("Spider-Matriarch", 12580, 12596, 2), // 向右
-                generateStepPaths("Spider-Matriarch", 12616, 12632, 2), // 向上
-                generateStepPaths("Spider-Matriarch", 12598 , 12614, 2)  // 向下
+                generateStepPaths("Spider-Matriarch", 12580, 12596, 2),
+                generateStepPaths("Spider-Matriarch", 12616, 12632, 2),
+                generateStepPaths("Spider-Matriarch", 12598 , 12614, 2)
             };
 
-            // 女皇 Boss 定位：高血量坦克型巨型生物，會持續召喚小兵
-            return std::make_shared<SpiderMatriarch>(
-                type, path,
-                28.0f,                                              // 移動速度慢
-                600.0f,                                             // Boss 級血量 HP
-                moveAnis,
-                generateStepPaths("Spider-Matriarch", 12634, 12652, 2), // 攻擊動畫 (偶數跳號)
-                generateStepPaths("Spider-Matriarch", 12678, 12694, 2)  // 死亡動畫 (偶數跳號)
-            );
+            auto enemy = std::make_shared<SpiderMatriarch>(type, path, 28.0f, 250.0f, moveAnis,
+                generateStepPaths("Spider-Matriarch", 12634, 12652, 2), generateStepPaths("Spider-Matriarch", 12678, 12694, 2));
+            // 🎯 Spider-Matriarch: Magic Resistance High
+            enemy->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::HIGH);
+            return enemy;
         }
-        // 🎯 --- 新增 SPIDERLING 常規通道（從建構當下就交給 Enemy 接管，杜絕崩潰） ---
         else if (type == Enemy::Type::SPIDERLING) {
             std::vector<std::vector<std::string>> moveAnis = {
-                generateStepPaths("Spider-Matriarch/egg", 12201, 12217, 2), // 向右
-                generateStepPaths("Spider-Matriarch/egg", 12219, 12235, 2), // 向上
-                generateStepPaths("Spider-Matriarch/egg", 12237, 12253, 2)  // 向下
+                generateStepPaths("Spider-Matriarch/egg", 12201, 12217, 2),
+                generateStepPaths("Spider-Matriarch/egg", 12219, 12235, 2),
+                generateStepPaths("Spider-Matriarch/egg", 12237, 12253, 2)
             };
 
-            return std::make_shared<Enemy>(
-                type, path,
-                85.0f, // 小蜘蛛衝鋒移速
-                15.0f, // 小蜘蛛低血量
-                moveAnis,
-                generateStepPaths("Spider-Matriarch/egg", 12255, 12281, 2), // 攻擊動畫 (奇數跳號)
-                generateStepPaths("Spider-Matriarch/egg", 12309, 12319, 2)  // 死亡動畫 (奇數跳號)
-            );
+            auto enemy = std::make_shared<Enemy>(type, path, 85.0f, 30.0f, moveAnis,
+                generateStepPaths("Spider-Matriarch/egg", 12255, 12281, 2), generateStepPaths("Spider-Matriarch/egg", 12309, 12319, 2));
+            enemy->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::NONE);
+            return enemy;
         }
         return nullptr;
     }
