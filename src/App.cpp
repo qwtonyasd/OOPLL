@@ -230,23 +230,47 @@ void App::HandleGamePlay() {
             }
         }
     } else if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+        // 優先處理 HUD 法術介面點擊
         SpellManager::SpellType clickedSpell = m_Hud->HandleClick(mousePos);
         if (clickedSpell != SpellManager::SpellType::NONE) {
             if (clickedSpell == SpellManager::SpellType::FIREBALL) m_SpellManager->SelectFireball();
             else if (clickedSpell == SpellManager::SpellType::REINFORCE) m_SpellManager->SelectReinforce();
-        } else if (m_SpellManager->GetSelectedSpell() != SpellManager::SpellType::NONE) {
+        }
+        // 處理施法點擊
+        else if (m_SpellManager->GetSelectedSpell() != SpellManager::SpellType::NONE) {
             m_SpellManager->CastCurrentSpell(mousePos, m_Enemies, m_ActiveReinforcements);
-        } else {
-            bool upgradeHandled = false;
+        }
+        else {
+            bool actionHandled = false;
+
+            // 1. 優先處理 ArcherTower 的技能購買點擊
             for (auto& tower : m_TowerManager->GetTowers()) {
-                if (tower->GetIsSelected() && tower->IsUpgradeClicked(mousePos)) {
-                    int cost = tower->GetUpgradeCost();
-                    if (gm.SpendMoney(cost)) tower->Upgrade();
-                    upgradeHandled = true;
-                    break;
+                if (tower->GetIsSelected()) {
+                    if (auto archer = std::dynamic_pointer_cast<ArcherTower>(tower)) {
+                        int skillIdx = archer->GetClickedSkillIndex(mousePos); // 建議實作回傳 index 的函式
+                        if (skillIdx != -1) {
+                            archer->BuySkill(skillIdx);
+                            actionHandled = true;
+                            break;
+                        }
+                    }
                 }
             }
-            if (!upgradeHandled) {
+
+            // 2. 處理升級按鈕點擊
+            if (!actionHandled) {
+                for (auto& tower : m_TowerManager->GetTowers()) {
+                    if (tower->GetIsSelected() && tower->IsUpgradeClicked(mousePos)) {
+                        int cost = tower->GetUpgradeCost();
+                        if (gm.SpendMoney(cost)) tower->Upgrade();
+                        actionHandled = true;
+                        break;
+                    }
+                }
+            }
+
+            // 3. 處理塔的選擇或放置邏輯
+            if (!actionHandled) {
                 if (!m_TowerManager->HandleClick(mousePos)) {
                     bool hitSlot = false;
                     for (auto& slot : m_TowerSlots) {

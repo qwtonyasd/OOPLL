@@ -11,6 +11,16 @@
 
 class ArcherTower : public Tower {
 public:
+    static constexpr int SKILL_A_COST = 100;
+    static constexpr int SKILL_B_COST = 100;
+    bool IsSkillClicked(const glm::vec2& mousePos);
+
+    // 新增此宣告
+    int GetClickedSkillIndex(const glm::vec2& mousePos);
+
+    // 購買技能函數
+    void BuySkill(int skillIndex);
+
     ArcherTower(glm::vec2 pos);
     void Attack(std::shared_ptr<Enemy> target,
                 std::vector<std::shared_ptr<Enemy>>& allEnemies,
@@ -18,23 +28,28 @@ public:
     void UpdateAnimation() override;
     void Draw() override;
     void Upgrade() override;
+    void UpdateSkillText();
 
 private:
-    // 資源載入函數：根據等級自動切換路徑
-    void LoadLevelAssets();
+    std::shared_ptr<Util::Text> m_SkillTextA;
+    std::shared_ptr<Util::Text> m_SkillTextB;
 
-    // 儲存各等級的數值配置
+    bool m_SkillA_Learned = false;
+    bool m_SkillB_Learned = false;
+
+    std::shared_ptr<Util::Image> m_SkillIcon1;
+    std::shared_ptr<Util::Image> m_SkillIcon2;
+    void LoadSkillIcons();
+
+    void LoadLevelAssets();
     std::vector<TowerStats> m_ArcherStats;
 
-    // --- 資源管理 ---
     std::vector<std::string> m_UpFrames;
     std::vector<std::string> m_DownFrames;
 
-    // --- 繪製組件 ---
     std::shared_ptr<Core::Drawable> m_LeftDrawable;
     std::shared_ptr<Core::Drawable> m_RightDrawable;
 
-    // --- 狀態管理 ---
     float m_LeftAttackStartTime = 0.0f, m_RightAttackStartTime = 0.0f;
     bool m_IsLeftAttacking = false, m_IsRightAttacking = false;
     bool m_LeftHasFired = false, m_RightHasFired = false;
@@ -47,3 +62,4 @@ private:
 };
 
 #endif
+
