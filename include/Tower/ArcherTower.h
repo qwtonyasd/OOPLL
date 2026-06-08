@@ -14,7 +14,7 @@ public:
     static constexpr int SKILL_A_COST = 100;
     static constexpr int SKILL_B_COST = 100;
     bool IsSkillClicked(const glm::vec2& mousePos);
-
+    std::shared_ptr<Enemy> FindTarget(const std::vector<std::shared_ptr<Enemy>>& enemies) override;
     // 新增此宣告
     int GetClickedSkillIndex(const glm::vec2& mousePos);
 
@@ -29,8 +29,15 @@ public:
     void Draw() override;
     void Upgrade() override;
     void UpdateSkillText();
+    void Update(std::vector<std::shared_ptr<Enemy>>& enemies,
+            std::vector<std::shared_ptr<Projectile>>& projectiles) override;
 
 private:
+
+    float m_SkillBCooldown = 7.0f;
+    float m_LastSkillBTime = -10.0f; // 初始設為負數
+    void TryAutoCastSkillB(std::vector<std::shared_ptr<Enemy>>& enemies);
+
     std::shared_ptr<Util::Text> m_SkillTextA;
     std::shared_ptr<Util::Text> m_SkillTextB;
 

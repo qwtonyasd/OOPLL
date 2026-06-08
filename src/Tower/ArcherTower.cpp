@@ -7,10 +7,10 @@ ArcherTower::ArcherTower(glm::vec2 pos)
 
     // 1. 定義三級數據：{範圍, 攻速, 傷害, 升級費用, 基座圖路徑}
     m_ArcherStats = {
-        {175.0f, 0.8f, 9.0f, 10,  "../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/1.png"},
-        {200.0f, 0.7f, 12.0f, 10, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel2/1.png"},
-        {225.0f, 0.6f, 14.0f, 160, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel3/1.png"},
-        {250.0f, 0.5f, 16.0f, 250, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel4/1.png"}
+        {175.0f, 0.8f, 5.0f, 10,  "../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/1.png"},
+        {200.0f, 0.7f, 7.0f, 10, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel2/1.png"},
+        {225.0f, 0.6f, 9.0f, 160, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel3/1.png"},
+        {250.0f, 0.5f, 11.0f, 250, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel4/1.png"}
     };
     //讓價格正常顯示
     ApplyBaseStats(m_ArcherStats[0]);
@@ -116,6 +116,11 @@ void ArcherTower::UpdateAnimation() {
                     "../PTSD/assets/sprites/images/ArcherTower/Arrow/1.png",
                     std::vector<std::string>{}
                 );
+                // [新增]：如果學了技能 A，給箭矢加上中毒效果
+                if (m_SkillA_Learned) {
+                    arrow->SetPoisonEffect(true);
+                }
+
                 m_ProjectilesRef->push_back(arrow);
                 hasFired = true;
             }
@@ -291,4 +296,86 @@ int ArcherTower::GetClickedSkillIndex(const glm::vec2& mousePos) {
     if (glm::distance(mousePos, posB) < radius) return 1; // 技能 B
 
     return -1; // 沒點到任何技能
+}
+
+void ArcherTower::Update(std::vector<std::shared_ptr<Enemy>>& enemies,
+                         std::vector<std::shared_ptr<Projectile>>& projectiles) {
+    // 呼叫父類別的 Update
+    Tower::Update(enemies, projectiles);
+
+    // 自動觸發技能 B
+    if (m_Level == 4 && m_SkillB_Learned) {
+        TryAutoCastSkillB(enemies);
+    }
+}
+
+// 3. 自動施放邏輯
+void ArcherTower::TryAutoCastSkillB(std::vector<std::shared_ptr<Enemy>>& enemies) {
+    float currentTime = static_cast<float>(Util::Time::GetElapsedTimeMs()) / 1000.0f;
+
+    // 檢查 7 秒冷卻
+    if (currentTime - m_LastSkillBTime < m_SkillBCooldown) return;
+
+    int count = 0;
+    for (auto& enemy : enemies) {
+        if (!enemy || enemy->GetHP() <= 0) continue;
+
+        float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
+        if (dist <= m_Range) {
+            // 對怪物施加綑綁效果 (需確保 Enemy 有此功能)
+            enemy->ApplyRootEffect(4.0f);//綑綁怪物的時間
+            count++;
+
+            if (count >= 3) break; // 最多綁幾個怪物
+        }
+    }
+
+    if (count > 0) {
+        m_LastSkillBTime = currentTime;
+        LOG_INFO("Auto-cast Root Skill on {0} enemies!", count);
+        // 可選：在這裡加個音效或簡單的視覺特效
+    }
+}
+
+// 在 ArcherTower.cpp 中
+std::shared_ptr<Enemy> ArcherTower::FindTarget(const std::vector<std::shared_ptr<Enemy>>& enemies) {
+    std::shared_ptr<Enemy> bestTarget = nullptr;          // 全場進度最遠的 (兜底方案)
+    std::shared_ptr<Enemy> priorityTarget = nullptr;      // 優先級目標 (根據購買狀態)
+
+    float maxProgress = -1.0f;
+    float maxPriorityProgress = -1.0f;
+
+    for (const auto& enemy : enemies) {
+        if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) continue;
+
+        float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
+        if (dist <= m_Range) {
+            float progress = enemy->GetTotalTravelledDistance();
+
+            // 1. 記錄所有怪物中進度最遠的 (無論狀態如何)
+            if (progress > maxProgress) {
+                maxProgress = progress;
+                bestTarget = enemy;
+            }
+
+            // 2. 決定優先方案
+            bool isPriority = false;
+            if (m_SkillA_Learned) {
+                // 如果學了毒技能：優先找「沒中毒的」
+                if (!enemy->IsPoisoned()) isPriority = true;
+            } else {
+                // 如果沒學毒技能：優先找「沒定身的」
+                if (!enemy->IsRooted()) isPriority = true;
+            }
+
+            // 如果該目標符合當前的優先條件，則比較進度
+            if (isPriority && progress > maxPriorityProgress) {
+                maxPriorityProgress = progress;
+                priorityTarget = enemy;
+            }
+        }
+    }
+
+    // 優先回傳優先級目標，如果全部都中毒/被定身了，才回傳備選方案
+    return (priorityTarget) ? priorityTarget : bestTarget;
 }

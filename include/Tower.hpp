@@ -152,21 +152,37 @@ protected:
         UpdateCostText();
     }
 
-    std::shared_ptr<Enemy> FindTarget(const std::vector<std::shared_ptr<Enemy>>& enemies) {
+    virtual std::shared_ptr<Enemy> FindTarget(const std::vector<std::shared_ptr<Enemy>>& enemies) {
         std::shared_ptr<Enemy> bestTarget = nullptr;
+        std::shared_ptr<Enemy> secondaryTarget = nullptr;
+
         float maxProgress = -1.0f;
+        float maxProgressNoRoot = -1.0f;
+
         for (const auto& enemy : enemies) {
             if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) continue;
+
             float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
             if (dist <= m_Range) {
-                float currentProgress = enemy->GetTotalTravelledDistance();
-                if (currentProgress > maxProgress) {
-                    maxProgress = currentProgress;
+                float progress = enemy->GetTotalTravelledDistance();
+
+                // 1. 記錄所有怪物中進度最遠的 (作為備選方案)
+                if (progress > maxProgress) {
+                    maxProgress = progress;
                     bestTarget = enemy;
+                }
+
+                // 2. 記錄「未被定身」的怪物中進度最遠的 (作為優先方案)
+                // 假設你的 Enemy 類別有一個 IsRooted() 函式 (請參閱下方說明)
+                if (!enemy->IsRooted() && progress > maxProgressNoRoot) {
+                    maxProgressNoRoot = progress;
+                    secondaryTarget = enemy;
                 }
             }
         }
-        return bestTarget;
+
+        // 優先回傳未被定身的怪物，如果沒得選，才回傳被定身的怪物
+        return (secondaryTarget) ? secondaryTarget : bestTarget;
     }
 
     float m_Range, m_Cooldown, m_Damage;
