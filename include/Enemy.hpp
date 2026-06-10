@@ -12,6 +12,31 @@ class Soldier;
 
 class Enemy : public Unit {
 public:
+    bool IsRooted() const { return m_RootTimer > 0; }
+
+    void ApplyPoison(float damagePerSec, float duration) {
+        m_PoisonDPS = damagePerSec;
+        m_PoisonTimer = duration;
+    }
+
+    bool IsPoisoned() const { return m_PoisonTimer > 0; }
+
+    // 在 Update 中扣除毒傷
+    void UpdatePoison(float dt) {
+        if (m_PoisonTimer > 0) {
+            m_PoisonTimer -= dt;
+            TakeDamage(m_PoisonDPS * dt, DamageType::MAGIC); // 毒傷視為魔法傷害
+        }
+    }
+
+    void ApplyRootEffect(float duration) {
+        if (m_RootTimer <= 0) {
+            m_BaseSpeed = m_Speed; // 保存原本的速度
+        }
+        m_RootTimer = duration;
+        m_Speed = 0.0f; // 立即停止
+    }
+
     enum class Type { GOBLIN, ORC, WULF, SHAMAN, OGRE, WORG, BANDIT, BRIGAND, MARAUDER, GIANT_SPIDER, SPIDER_MATRIARCH, EGG, SPIDERLING };
     enum class State { MOVE_RIGHT, MOVE_UP, MOVE_DOWN, ATTACK, SKILL, DEATH };
     enum class DamageType { PHYSICAL, MAGIC };
@@ -62,6 +87,13 @@ public:
     }
 
 protected:
+
+    float m_PoisonTimer = 0.0f;
+    float m_PoisonDPS = 0.0f;
+
+    float m_BaseSpeed = 0.0f; // 用於儲存原本的速度
+    float m_RootTimer = 0.0f; // 剩餘定身時間
+
     glm::vec2 m_MoveDirection = {1.0f, 0.0f};
     Enemy::Type m_Type;
     State m_CurrentState;

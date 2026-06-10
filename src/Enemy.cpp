@@ -18,6 +18,25 @@ Enemy::Enemy(Enemy::Type type, const std::vector<glm::vec2>& path, float speed, 
 }
 
 void Enemy::Update(std::vector<std::shared_ptr<Enemy>>&, float dt) {
+
+    if (m_CurrentState == State::DEATH) {
+        // 不需要再呼叫 Play()，因為 OnDeath 已經呼叫過了
+        return;
+    }
+
+    // 2. [新增] 處理毒傷邏輯
+    UpdatePoison(dt); // 這才會觸發你定義的 UpdatePoison 內部的扣血
+
+    //弓箭塔綑技能
+    if (m_RootTimer > 0) {
+        m_RootTimer -= dt;
+        if (m_RootTimer <= 0) {
+            m_Speed = m_BaseSpeed; // 恢復原本的速度
+        }
+    }
+
+
+
     if (m_HP <= 0 && m_CurrentState != State::DEATH) {
         OnDeath();
         return;
@@ -105,6 +124,9 @@ void Enemy::Draw() {
 void Enemy::SetState(State newState) { m_CurrentState = newState; }
 
 void Enemy::OnDeath() {
+    // [關鍵]：如果已經是死亡狀態，就不要再執行任何動作，直接跳出
+    if (m_CurrentState == State::DEATH) return;
+
     SetState(State::DEATH);
     SetDrawable(m_DeadAni);
     m_DeadAni->SetCurrentFrame(0);
