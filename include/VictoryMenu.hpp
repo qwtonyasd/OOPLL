@@ -25,17 +25,18 @@ public:
     bool IsContinuePressed() const { return m_ContinuePressed; }
     bool IsRestartPressed() const { return m_RestartPressed; }
 
-    // --- 新增：取得根物件，以便掛載到 App 的 m_Root ---
+    // --- 取得根物件，以便掛載到 App 的 m_Root ---
     std::shared_ptr<Util::GameObject> GetGameObject() { return m_MainFrame; }
 
 private:
     bool IsMouseInsideRect(float x, float y, float w, float h);
 
 private:
-    std::shared_ptr<Util::GameObject> m_MainFrame; // 18.png
+    std::shared_ptr<Util::GameObject> m_MainFrame; // 18.png 或 21.png
     std::vector<std::shared_ptr<Util::GameObject>> m_Stars; // 13.png
 
     bool m_Visible = false;
+    bool m_IsDefeat = false;        // 用來區分當前是勝利還是失敗面板
     bool m_ContinuePressed = false;
     bool m_RestartPressed = false;
 };
