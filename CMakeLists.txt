@@ -77,6 +77,7 @@ add_executable(${PROJECT_NAME}
         include/UpgradeMenu.hpp
         src/UpgradeMenu.cpp
         src/Egg.cpp
+        include/LevelStatus.hpp
 )
 
 if(MSVC)

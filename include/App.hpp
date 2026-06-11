@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 #include "Util/GameObject.hpp"
-#include "Util/BGM.hpp" // 🎯 新增：引入 PTSD 的背景音樂類別
+#include "Util/BGM.hpp"
 #include "MapManager.hpp"
 #include "TowerManager.hpp"
 #include "BuildMenu.hpp"
@@ -16,6 +16,7 @@
 #include "VictoryMenu.hpp"
 #include "UpgradeMenu.hpp"
 #include "Map.hpp"
+#include "LevelStatus.hpp" // 🎯 新增引入
 
 // 法術系統與小兵的標頭檔
 #include "MageSkill/SpellManager.hpp"
@@ -24,8 +25,6 @@
 class App {
 public:
     enum class State { START, UPDATE, END };
-
-    // 🎯 新增：用於音樂控制的內部場景狀態
     enum class MusicState { MAIN_MENU, GAME_PLAY, END_GAME };
 
     App() = default;
@@ -38,7 +37,7 @@ private:
     void HandleSelectLevel();
     void HandleGamePlay();
     void ChangeLevel(int levelId);
-    void ChangeMusic(MusicState targetMusic); // 🎯 新增：安全切換音樂的輔助函式
+    void ChangeMusic(MusicState targetMusic);
 
     // 核心組件
     Util::GameObject m_Root;
@@ -53,18 +52,19 @@ private:
     // 主動法術管理器
     std::unique_ptr<SpellManager> m_SpellManager;
 
-    // 🎯 新增：三首不同情境的背景音樂管理物件
+    // 背景音樂管理物件
     std::shared_ptr<Util::BGM> m_BgmMainMenu;
     std::shared_ptr<Util::BGM> m_BgmUnderAttack;
     std::shared_ptr<Util::BGM> m_BgmEndGame;
-    MusicState m_CurrentMusicState = MusicState::MAIN_MENU; // 記錄當前正在播放哪首音樂
+    MusicState m_CurrentMusicState = MusicState::MAIN_MENU;
+
+    // 🎯 關卡狀態管理容器 (追蹤 1-5 關的解鎖與星數)
+    std::vector<LevelStatus> m_LevelProgress;
 
     // 物件容器
     std::vector<std::shared_ptr<TowerSlot>> m_TowerSlots;
     std::vector<std::shared_ptr<Enemy>> m_Enemies;
     std::vector<std::shared_ptr<Projectile>> m_Projectiles;
-
-    // 存放法術召喚出的民兵/援軍容器
     std::vector<std::shared_ptr<Soldier>> m_ActiveReinforcements;
 
     std::shared_ptr<TowerSlot> m_SelectedSlot = nullptr;

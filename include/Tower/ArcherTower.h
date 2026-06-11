@@ -11,8 +11,8 @@
 
 class ArcherTower : public Tower {
 public:
-    static constexpr int SKILL_A_COST = 100;
-    static constexpr int SKILL_B_COST = 100;
+    static constexpr int SKILL_A_COST = 10;
+    static constexpr int SKILL_B_COST = 10;
     bool IsSkillClicked(const glm::vec2& mousePos);
     std::shared_ptr<Enemy> FindTarget(const std::vector<std::shared_ptr<Enemy>>& enemies) override;
     // 新增此宣告

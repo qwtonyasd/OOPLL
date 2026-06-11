@@ -14,8 +14,6 @@ void App::Start() {
     m_TowerManager = std::make_unique<TowerManager>(m_Root);
     m_BuildMenu = std::make_unique<BuildMenu>();
     m_Hud = std::make_unique<Hud>();
-
-    // 初始化法術管理器
     m_SpellManager = std::make_unique<SpellManager>();
 
     m_VictoryMenu = std::make_unique<VictoryMenu>();
@@ -23,17 +21,22 @@ void App::Start() {
 
     m_UpgradeMenu = std::make_unique<UpgradeMenu>();
 
-    // 🎯 載入音樂檔案資源 (對應完整檔名)
+    // 初始化 5 個關卡的狀態
+    m_LevelProgress.resize(5);
+    m_LevelProgress[0].unlocked = true; // 預設第一關解鎖
+    for (size_t i = 1; i < 5; ++i) {
+        m_LevelProgress[i].unlocked = false;
+        m_LevelProgress[i].stars = 0;
+    }
+
     m_BgmMainMenu   = std::make_shared<Util::BGM>("../PTSD/assets/audio/256_Music_MainMenu.mp3");
     m_BgmUnderAttack = std::make_shared<Util::BGM>("../PTSD/assets/audio/252_Music_UnderAttack.mp3");
     m_BgmEndGame    = std::make_shared<Util::BGM>("../PTSD/assets/audio/257_Music_EndGame.mp3");
 
-    // 設定基礎音量 (0 ~ 100)
     m_BgmMainMenu->SetVolume(50);
     m_BgmUnderAttack->SetVolume(50);
     m_BgmEndGame->SetVolume(50);
 
-    // 🎯 預設進入選擇關卡介面，播放 MainMenu 背景音樂
     m_BgmMainMenu->Play();
     m_CurrentMusicState = MusicState::MAIN_MENU;
 
@@ -67,15 +70,13 @@ void App::Update() {
 }
 
 void App::HandleSelectLevel() {
-    int maxUnlocked = 5;
-    int selected = m_WorldMap->Update(maxUnlocked);
-    m_WorldMap->Draw(maxUnlocked);
+    // 傳入完整的關卡狀態 vector
+    int selected = m_WorldMap->Update(m_LevelProgress);
 
     if (selected > 0) {
         LOG_INFO("Entering Level: {}", selected);
         ChangeLevel(selected);
         m_IsInGame = true;
-        // 🎯 進入關卡戰鬥，切換為 UnderAttack 音樂
         ChangeMusic(MusicState::GAME_PLAY);
     }
     else if (selected == -1) {
@@ -90,42 +91,40 @@ void App::HandleGamePlay() {
     if (dt > 0.1f) dt = 0.016f;
     auto currentMap = m_MapManager->GetCurrentMap();
 
-    // 🎯 1. 即時戰敗攔截判定 (加入出怪與波次防護判定，防止剛進關卡時血量預設為 0 的空檔誤判)
+    // 1. 即時戰敗處理
     if (m_IsInGame && (m_IsWaveActive || !m_Enemies.empty()) && gm.GetHealth() <= 0 && !m_VictoryMenu->IsVisible()) {
-        m_VictoryMenu->SetVisible(true, 0); // 傳入 0 觸發顯示失敗畫面 (21.png)
-        ChangeMusic(MusicState::END_GAME);  // 切換至結算音樂
+        m_VictoryMenu->SetVisible(true, 0);
+        ChangeMusic(MusicState::END_GAME);
     }
 
-    // 🎯 2. 結算面板（不論勝敗）顯示時的處理
+    // 2. 結算面板點擊響應
     if (m_VictoryMenu->IsVisible()) {
         m_VictoryMenu->Update();
 
-        // 功能一：再打一次 (TRY AGAIN)
         if (m_VictoryMenu->IsRestartPressed()) {
-            ChangeLevel(m_CurrentLevelID);       // 重新載入當前關卡
-            ChangeMusic(MusicState::GAME_PLAY);  // 音樂切回 UnderAttack 戰鬥曲
+            ChangeLevel(m_CurrentLevelID);
+            ChangeMusic(MusicState::GAME_PLAY);
             m_VictoryMenu->ResetFlags();
             return;
         }
 
-        // 功能二：跳到主頁面 (QUIT)
         if (m_VictoryMenu->IsContinuePressed()) {
-            m_IsInGame = false;                  // 離開遊戲關卡狀態
-            m_VictoryMenu->SetVisible(false, 0); // 隱藏面板
+            m_IsInGame = false;
+            m_VictoryMenu->SetVisible(false, 0);
             m_VictoryMenu->ResetFlags();
-            ChangeMusic(MusicState::MAIN_MENU);  // 音樂切回主選單 MainMenu
+            ChangeMusic(MusicState::MAIN_MENU);
+
+            // 🎯 重置大地圖旗幟動畫計時器，讓動畫重新完整播放一次
+            m_WorldMap->ResetAnimation();
             return;
         }
 
-        // 🔥 關鍵修正：當面板顯示時，我們跳過下方的遊戲邏輯更新(Update)，但直接跳到後方進行繪圖(Draw)，防止黑屏！
         goto RENDER_STAGE;
     }
 
     // =========================================================================
-    // 💡 遊戲核心更新迴圈（只有在活著且面板未開啟時，才會繼續執行 Update）
+    // 💡 遊戲主更新邏輯
     // =========================================================================
-
-    // --- 1. 更新邏輯 ---
     m_SpellManager->Update(dt, m_Enemies);
 
     {
@@ -155,13 +154,39 @@ void App::HandleGamePlay() {
                         ++it;
                     }
                 }
+
+                // 🎉 通關所有波次判定 🎉
                 if (m_PendingSubWaves.empty() && m_Enemies.empty()) {
                     m_IsWaveActive = false;
                     if (gm.GetCurrentWave() < static_cast<int>(m_Waves.size())) {
                         gm.NextWave();
                     } else {
-                        // 通關所有波次，彈出勝利結算畫面
-                        m_VictoryMenu->SetVisible(true, gm.GetHealth());
+                        // 🎯 18血以上(含)皆為 3 星的評等邏輯
+                        int finalHP = gm.GetHealth();
+                        int calculatedStars = 1;
+
+                        if (finalHP >= 18) {
+                            calculatedStars = 3;      // 18、19、20 血都是 3 星
+                        }
+                        else if (finalHP >= 10) {
+                            calculatedStars = 2;      // 10 ~ 17 血為 2 星
+                        }
+                        else {
+                            calculatedStars = 1;      // 1 ~ 9 血為 1 星
+                        }
+
+                        // 更新當前關卡紀錄（若這次打得更好則覆蓋星數）
+                        int idx = m_CurrentLevelID - 1;
+                        if (calculatedStars > m_LevelProgress[idx].stars) {
+                            m_LevelProgress[idx].stars = calculatedStars;
+                        }
+
+                        // 解鎖下一關
+                        if (m_CurrentLevelID < 5) {
+                            m_LevelProgress[m_CurrentLevelID].unlocked = true;
+                        }
+
+                        m_VictoryMenu->SetVisible(true, finalHP);
                         ChangeMusic(MusicState::END_GAME);
                     }
                 }
@@ -171,7 +196,6 @@ void App::HandleGamePlay() {
 
     m_TowerManager->UpdateAll(m_Enemies, m_Projectiles);
 
-    // --- 2. 安全更新與清理階段 ---
     m_ActiveReinforcements.erase(
         std::remove_if(m_ActiveReinforcements.begin(), m_ActiveReinforcements.end(),
             [&](auto& soldier) {
@@ -197,7 +221,6 @@ void App::HandleGamePlay() {
                                    (enemy->GetHP() <= 0 && enemy->IsDeadAnimationFinished());
                 if (shouldRemove) {
                     if (enemy->ReachedEnd()) {
-                        // 🎯 依據設定檔的怪物種類，扣除指定的血量
                         int damageToTake = 1;
                         switch (enemy->GetType()) {
                             case Enemy::Type::OGRE:
@@ -212,7 +235,6 @@ void App::HandleGamePlay() {
                                 break;
                         }
                         gm.TakeDamage(damageToTake);
-                        LOG_INFO("Enemy reached end. Player takes {} damage. Remaining HP: {}", damageToTake, gm.GetHealth());
                     } else {
                         gm.AddMoney(enemy->GetType() == Enemy::Type::GOBLIN ? 3 : 9);
                     }
@@ -223,7 +245,7 @@ void App::HandleGamePlay() {
 
     Egg::ClearSpawnQueue(m_Enemies);
 
-    // --- 3. 輸入處理 ---
+    // 輸入控制管理
     {
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
         if (Util::Input::IsKeyDown(Util::Keycode::NUM_1)) m_SpellManager->SelectFireball();
@@ -285,9 +307,6 @@ void App::HandleGamePlay() {
         }
     }
 
-    // =========================================================================
-    // 🎯 3. 繪圖階段（不論有沒有定格暫停，每影格都要執行 Draw）
-    // =========================================================================
 RENDER_STAGE:
     m_MapManager->Draw();
     for (auto& slot : m_TowerSlots) slot->Draw();
@@ -299,15 +318,16 @@ RENDER_STAGE:
     if (m_BuildMenu->IsVisible()) m_BuildMenu->Draw();
     if (m_Hud) m_Hud->Draw(m_SpellManager);
 
-    // 讓結算面板永遠蓋在最上層繪製
     if (m_VictoryMenu->IsVisible()) {
         m_VictoryMenu->Draw();
     }
 
-    // 按下 BACKSPACE 放棄關卡回到選單時，也順便切回選單音樂
     if (Util::Input::IsKeyDown(Util::Keycode::BACKSPACE)) {
         m_IsInGame = false;
         ChangeMusic(MusicState::MAIN_MENU);
+
+        // 🎯 中途強制退出回到大地圖時，也重置動畫
+        m_WorldMap->ResetAnimation();
     }
 }
 
@@ -329,7 +349,6 @@ void App::ChangeLevel(int levelId) {
     m_Enemies.clear();
     m_TowerSlots.clear();
     m_PendingSubWaves.clear();
-
     m_ActiveReinforcements.clear();
     m_SpellManager->CancelSelection();
 
@@ -345,23 +364,14 @@ void App::ChangeLevel(int levelId) {
     if (m_VictoryMenu) m_VictoryMenu->SetVisible(false, 0);
 }
 
-// 🎯 音訊狀態安全切換管理函式
 void App::ChangeMusic(MusicState targetMusic) {
     if (m_CurrentMusicState == targetMusic) return;
 
-    // 播放目標場景音樂
     switch (targetMusic) {
-        case MusicState::MAIN_MENU:
-            m_BgmMainMenu->Play();
-            break;
-        case MusicState::GAME_PLAY:
-            m_BgmUnderAttack->Play();
-            break;
-        case MusicState::END_GAME:
-            m_BgmEndGame->Play();
-            break;
+        case MusicState::MAIN_MENU: m_BgmMainMenu->Play(); break;
+        case MusicState::GAME_PLAY: m_BgmUnderAttack->Play(); break;
+        case MusicState::END_GAME:  m_BgmEndGame->Play(); break;
     }
-
     m_CurrentMusicState = targetMusic;
 }
 
