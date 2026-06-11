@@ -6,9 +6,20 @@
 #include <vector>
 #include <string>
 #include <memory>
-
+#include "GameData.hpp"
 class MageTower : public Tower {
 public:
+    int GetTotalCost() const override {
+        // 根據當前等級（m_Level），精確回傳該階段累積的總花費
+        switch (m_Level) {
+            case 1: return 70;                  // 1等造價
+            case 2: return 70 + 110;            // 1等 + 2等升級費 (180)
+            case 3: return 70 + 110 + 160;      // 1等 + 2等 + 3等升級費 (340)
+            case 4: return 250;                 // 🎯 你提到四等總耗是 250
+            default: return 70;
+        }
+    }
+
     MageTower(glm::vec2 pos);
     virtual ~MageTower() = default;
 

@@ -2,6 +2,7 @@
 #include "Util/Time.hpp"
 #include "Tower/Projectile/Projectile.hpp"
 #include "Util/Logger.hpp"
+#include "GameData.hpp" // 🆕 確保引入天賦數據核心
 
 // 1. 建構子
 BombTower::BombTower(glm::vec2 pos)
@@ -34,11 +35,21 @@ BombTower::BombTower(glm::vec2 pos)
 
     m_VisualOffset = 10.0f;
     ApplyBaseStats(m_BombStats[0]);
-    LoadLevelAssets(); // <-- 這裡如果報錯代表下面沒寫 BombTower::
+
+
+    // 🆕 【自訂天賦注入】同時改動攻擊力與砲塔射程
+    auto& gd = GameData::GetInstance();
+    int talentLv = gd.talentLevels[3];
+
+    m_Damage *= gd.GetBombDamage(talentLv);
+    m_Range *= gd.GetBombAttackRange(talentLv); // 👈 讓砲塔本體的攻擊圈圈變大！
+    LOG_INFO("=================================");
+
+    LoadLevelAssets();
     UpdateCostText();
 }
 
-// 2. 解構子 (必須實作)
+// 2. 解構子
 BombTower::~BombTower() {}
 
 // 3. Draw 實作
@@ -85,10 +96,14 @@ void BombTower::UpdateAnimation() {
                     explosionFrames.push_back(current.explosionFolder + std::to_string(i) + ".png");
                 }
 
+                // 🆕 【自訂天賦注入】動態計算 1 等就該拿到的 1.1 倍爆炸半徑
+                auto& gd = GameData::GetInstance();
+                float finalSplashRadius = 80.0f * gd.GetBombSplashRadius(gd.talentLevels[3]);
+
                 auto bomb = std::make_shared<Projectile>(
-                    current.moveType, // 使用數據表設定的移動類型
+                    current.moveType,
                     Projectile::HitType::AREA,
-                    firePos, m_CurrentTarget, m_Damage, 0.8f, 80.0f,
+                    firePos, m_CurrentTarget, m_Damage, 0.8f, finalSplashRadius, // 👈 爆炸範圍套用
                     current.bulletSprite, explosionFrames, m_AllEnemiesRef
                 );
                 m_ProjectilesRef->push_back(bomb);
@@ -106,7 +121,15 @@ void BombTower::Upgrade() {
     if (m_Level < m_MaxLevel) {
         m_Level++;
         ApplyBaseStats(m_BombStats[m_Level - 1]);
-        LoadLevelAssets(); // 更新動畫路徑
+
+        // 🆕 【自訂天賦注入】確保升級到 Lv2、Lv3 時射程和攻擊不會被白板數據蓋掉
+        auto& gd = GameData::GetInstance();
+        int talentLv = gd.talentLevels[3];
+
+        m_Damage *= gd.GetBombDamage(talentLv);
+        m_Range *= gd.GetBombAttackRange(talentLv); // 👈 升級時同步套用
+
+        LoadLevelAssets();
         LOG_INFO("Bomb Tower Upgraded to Level {}", m_Level);
     }
 }

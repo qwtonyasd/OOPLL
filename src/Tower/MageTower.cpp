@@ -14,6 +14,20 @@ MageTower::MageTower(glm::vec2 pos)
 
     ApplyBaseStats(m_MageStats[0]);
     LoadLevelAssets();
+
+    // 🆕 【魔法塔天賦注入】初始建造時套用
+    auto& gd = GameData::GetInstance();
+    int talentLv = gd.talentLevels[2]; // 魔法塔使用的是 Index 2
+
+    m_Damage *= gd.GetMageDamage(talentLv);      // 套用攻擊力加成
+    m_Range *= gd.GetMageAttackRange(talentLv);  // 套用射程範圍加成
+
+    LOG_INFO("=== 🔮 偵錯：正在建造魔法塔 ===");
+    LOG_INFO("GameData 中的 talentLevels[1] 當前等級為: {}", gd.talentLevels[1]);
+    LOG_INFO("計算出來的範圍加成倍率為: {}", gd.GetMageAttackRange(talentLv));
+    LOG_INFO("套用天賦後的實際 m_Range 數值為: {}", m_Range);
+    LOG_INFO("=================================");
+
 }
 
 void MageTower::LoadLevelAssets() {
@@ -27,12 +41,12 @@ void MageTower::LoadLevelAssets() {
     m_BulletSprite = "../PTSD/assets/sprites/images/MageTower/Mage/1.png";
     m_HitEffectFolder = "../PTSD/assets/sprites/images/MageTower/Mage/";
 
-    // 載入基座 1-6.png (引用自)
+    // 載入基座 1-6.png
     for (int i = 1; i <= 6; ++i) {
         m_BaseFrames.push_back(basePath + std::to_string(i) + ".png");
     }
 
-    // 載入法師 Up/Down 動畫 (引用自)
+    // 載入法師 Up/Down 動畫
     for (int i = 1; i <= 7; ++i) {
         m_AttackUpFrames.push_back(basePath + "Up/" + std::to_string(i) + ".png");
         m_AttackDownFrames.push_back(basePath + "Down/" + std::to_string(i) + ".png");
@@ -101,7 +115,6 @@ void MageTower::Draw() {
         glm::vec2 imgSize = baseDrawable->GetSize();
 
         // --- 核心修正：解決奇數像素模糊 ---
-        // 將 float 轉為 int 後再取餘數
         if (static_cast<int>(imgSize.x) % 2 != 0) {
             pixelTransform.translation.x += 0.5f;
         }
@@ -115,13 +128,10 @@ void MageTower::Draw() {
         // 3. 繪製法師
         if (m_Drawable) {
             Util::Transform mageTransform = pixelTransform;
-            // 這裡的位移也要確保是整數
             mageTransform.translation.y += 18.0f;
 
-            // 如果法師圖片本身也是奇數，這裡也要補 0.5f
             glm::vec2 mageSize = m_Drawable->GetSize();
             if (static_cast<int>(mageSize.x) % 2 != 0) mageTransform.translation.x += 0.5f;
-            // 注意：如果上面基座已經補過 0.5 了，這裡可能要視情況微調
 
             auto mageData = Util::ConvertToUniformBufferData(mageTransform, mageSize, m_ZIndex + 0.1f);
             m_Drawable->Draw(mageData);
@@ -146,7 +156,15 @@ void MageTower::Attack(std::shared_ptr<Enemy> target,
 void MageTower::Upgrade() {
     if (m_Level < m_MaxLevel) {
         m_Level++;
-        ApplyBaseStats(m_MageStats[m_Level - 1]);
+        ApplyBaseStats(m_MageStats[m_Level - 1]); // 這裡會覆蓋掉原本的屬性
+
+        // 🆕 【魔法塔天賦注入】確保局內升級後，天賦加成依然疊加在新的白板基礎數值上
+        auto& gd = GameData::GetInstance();
+        int talentLv = gd.talentLevels[1];
+
+        m_Damage *= gd.GetMageDamage(talentLv);      // 重新套用攻擊力加成
+        m_Range *= gd.GetMageAttackRange(talentLv);  // 重新套用射程範圍加成
+
         LoadLevelAssets();
         UpdateCostText();
     }

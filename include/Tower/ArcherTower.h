@@ -8,9 +8,25 @@
 #include "Util/Logger.hpp"
 #include <vector>
 #include <string>
+#include "GameData.hpp"
 
 class ArcherTower : public Tower {
 public:
+    int GetTotalCost() const override {
+        // 根據當前等級（m_Level），精確回傳該階段累積的總花費
+        switch (m_Level) {
+            case 1: return 70;                  // 1等造價
+            case 2: return 70 + 110;            // 1等 + 2等升級費 (180)
+            case 3: return 70 + 110 + 160;      // 1等 + 2等 + 3等升級費 (340)
+            case 4: return 250;                 // 🎯 你提到四等總耗是 250
+            default: return 70;
+        }
+    }
+
+
+    // 🆕 【新增】全域天賦加成計算函式宣告
+    void ApplyGlobalUpgrades();
+
     static constexpr int SKILL_A_COST = 10;
     static constexpr int SKILL_B_COST = 10;
     bool IsSkillClicked(const glm::vec2& mousePos);
@@ -33,7 +49,7 @@ public:
             std::vector<std::shared_ptr<Projectile>>& projectiles) override;
 
 private:
-
+    TowerStats m_BaseStats;
     float m_SkillBCooldown = 7.0f;
     float m_LastSkillBTime = -10.0f; // 初始設為負數
     void TryAutoCastSkillB(std::vector<std::shared_ptr<Enemy>>& enemies);

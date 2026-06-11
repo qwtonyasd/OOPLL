@@ -1,6 +1,6 @@
 #include "tower/ArcherTower.h"
 #include "Util/Time.hpp"
-
+#include "GameManager.hpp"
 ArcherTower::ArcherTower(glm::vec2 pos)
     : Tower(pos, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/1.png",
             175.0f, 0.8f, 5.0f, 70, Enemy::DamageType::PHYSICAL,4) {
@@ -12,13 +12,32 @@ ArcherTower::ArcherTower(glm::vec2 pos)
         {225.0f, 0.6f, 9.0f, 160, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel3/1.png"},
         {250.0f, 0.5f, 11.0f, 250, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel4/1.png"}
     };
-    //讓價格正常顯示
-    ApplyBaseStats(m_ArcherStats[0]);
+
+    auto& gd = GameData::GetInstance();
+    if (gd.talentLevels[0] >= 1) {
+
+        // 🟢 修改為這行，成功對接到你的 GameManager！
+        GameManager::GetInstance().AddMoney(20);
+
+        LOG_INFO("Archer Tower built! Talent Lv1 active: Refunded 20 gold.");
+    }
+
+    // --- 修改核心區域開始 ---
+    // 將當前等級(Lv1)的數值存入 m_BaseStats
+    m_BaseStats = m_ArcherStats[0];
+
+    // 先讓父類別 (Tower) 去設定基礎數值
+    ApplyBaseStats(m_BaseStats);
+
+    // 接著立刻呼叫全域加成，將 m_Damage 和 m_Range 覆蓋為加成後的數值
+    ApplyGlobalUpgrades();
+    // --- 修改核心區域結束 ---
 
     // 2. 載入等級 1 的資源
     LoadLevelAssets();
 
-    UpdateCostText();
+    // 註：UpdateCostText() 已經在 ApplyGlobalUpgrades 裡面呼叫過了，
+    // 這裡可以選擇保留或刪除，不影響運行。
 }
 
 void ArcherTower::LoadLevelAssets() {
@@ -42,12 +61,20 @@ void ArcherTower::LoadLevelAssets() {
 void ArcherTower::Upgrade() {
     if (m_Level < m_MaxLevel) {
         m_Level++;
-        // 套用下一級數值
-        ApplyBaseStats(m_ArcherStats[m_Level - 1]);
+
+        // --- 修改核心區域開始 ---
+        // 更新為新等級的基礎數值
+        m_BaseStats = m_ArcherStats[m_Level - 1];
+
+        // 讓父類別套用新等級的基礎狀態
+        ApplyBaseStats(m_BaseStats);
+
+        // 疊加「遊戲外」加成，計算出最終的傷害與範圍
+        ApplyGlobalUpgrades();
+        // --- 修改核心區域結束 ---
+
         // 重新載入對應等級的資源
         LoadLevelAssets();
-        // 重要：更新文字顯示為「再下一級」的價格
-        UpdateCostText();
 
         // 如果升到 4 等，初始化技能圖示
         if (m_Level == 4) {
@@ -249,7 +276,7 @@ void ArcherTower::UpdateSkillText() {
 
 bool ArcherTower::IsSkillClicked(const glm::vec2& mousePos) {
     if (m_Level < 4 || !m_IsSelected) return false;
-
+    LOG_INFO("MousePos: ({0}, {1}) | TowerPos: ({2}, {3})", mousePos.x, mousePos.y, m_Transform.translation.x, m_Transform.translation.y);
     // 這些座標必須與你 Draw() 裡繪製技能圖示的座標一致
     glm::vec2 posA = m_Transform.translation + glm::vec2(-35, 55);
     glm::vec2 posB = m_Transform.translation + glm::vec2(35, 55);
@@ -379,3 +406,21 @@ std::shared_ptr<Enemy> ArcherTower::FindTarget(const std::vector<std::shared_ptr
     // 優先回傳優先級目標，如果全部都中毒/被定身了，才回傳備選方案
     return (priorityTarget) ? priorityTarget : bestTarget;
 }
+
+void ArcherTower::ApplyGlobalUpgrades() {
+    // 獲取箭塔對應的路線等級 (假設索引為 0)
+    int lv = GameData::GetInstance().talentLevels[0];
+
+    // 直接呼叫 GameData 裡面的計算函式，不要加 .archer
+    float dmgMult = GameData::GetInstance().GetArcherDamage(lv);
+    float rngMult = GameData::GetInstance().GetArcherRange(lv);
+
+    // 重新計算當前數值
+    // 確保 m_BaseStats 已經在建構子存好了初始數值
+    m_Damage = m_BaseStats.damage * dmgMult;
+    m_Range  = m_BaseStats.range  * rngMult;
+    LOG_INFO("ApplyGlobalUpgrades: LV={0}, DMG={1}, RNG={2}", lv, dmgMult, rngMult);
+    // 如果有需要更新文字顯示
+    UpdateCostText();
+}
+

@@ -278,16 +278,57 @@ void App::HandleGamePlay() {
             } else if (m_SpellManager->GetSelectedSpell() != SpellManager::SpellType::NONE) {
                 m_SpellManager->CastCurrentSpell(mousePos, m_Enemies, m_ActiveReinforcements);
             } else {
-                bool upgradeHandled = false;
+                bool towerMenuHandled = false;
+
                 for (auto& tower : m_TowerManager->GetTowers()) {
-                    if (tower->GetIsSelected() && tower->IsUpgradeClicked(mousePos)) {
-                        int cost = tower->GetUpgradeCost();
-                        if (gm.SpendMoney(cost)) tower->Upgrade();
-                        upgradeHandled = true;
-                        break;
+                    if (tower->GetIsSelected()) {
+
+                        // 1. 【優先判定】檢查有沒有點擊到 Level 4 的技能圖示
+                        if (tower->IsSkillClicked(mousePos)) {
+                            int skillIdx = tower->GetClickedSkillIndex(mousePos);
+                            if (skillIdx != -1) {
+                                tower->BuySkill(skillIdx);
+                            }
+                            towerMenuHandled = true;
+                            break;
+                        }
+
+                        // 2. 【次要判定】原本的升級按鈕點擊
+                        if (tower->IsUpgradeClicked(mousePos)) {
+                            int cost = tower->GetUpgradeCost();
+                            if (gm.SpendMoney(cost)) tower->Upgrade();
+                            towerMenuHandled = true;
+                            break;
+                        }
+
+                        if (tower->IsSellClicked(mousePos)) {
+                            // 1. 計算退款並透過 GameManager 加錢
+                            int refund = tower->GetSellRefund();
+                            gm.AddMoney(refund);
+                            LOG_INFO("Tower Sold! Refunded {} gold.", refund);
+
+                            // 2. 將對應的 TowerSlot 插槽還原為「未佔用」狀態
+                            for (auto& slot : m_TowerSlots) {
+                                if (glm::distance(slot->GetPosition(), tower->GetPosition()) < 1.0f) {
+                                    slot->SetOccupied(false);
+                                    break;
+                                }
+                            }
+
+                            // 3. 從 TowerManager 中將這座塔擦除（因為後面會直接 break 結束迴圈，此處直接 erase 是安全的）
+                            auto& towers = m_TowerManager->GetTowers();
+                            towers.erase(std::remove(towers.begin(), towers.end(), tower), towers.end());
+
+                            m_TowerManager->ClearSelection();
+                            towerMenuHandled = true;
+                            break;
+                        }
+
                     }
                 }
-                if (!upgradeHandled) {
+
+                // 3. 如果沒有點到任何防禦塔的 UI，才去判定點擊空地或切換選取
+                if (!towerMenuHandled) {
                     if (!m_TowerManager->HandleClick(mousePos)) {
                         bool hitSlot = false;
                         for (auto& slot : m_TowerSlots) {

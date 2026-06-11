@@ -76,22 +76,22 @@ void UpgradeMenu::Update([[maybe_unused]] float dt) {
         if (glm::distance(mousePos, m_ResetBtnPos) < 45.0f) {
             LOG_INFO("Reset All Talents!");
             for (int i = 0; i < 6; ++i) {
-                m_TotalStars += m_TalentLevels[i];
-                m_TalentLevels[i] = 0;
+                GameData::GetInstance().totalStars += GameData::GetInstance().talentLevels[i];
+                GameData::GetInstance().talentLevels[i] = 0;
             }
             return;
         }
 
         // 偵測點擊天賦格子
         for (int route = 0; route < 6; ++route) {
-            int currentLv = m_TalentLevels[route];
+            int currentLv = GameData::GetInstance().talentLevels[route];
             if (currentLv < m_MaxLevel) {
                 glm::vec2 btnPos = GetIconPosition(route, currentLv);
                 if (glm::distance(mousePos, btnPos) < 28.0f) {
                     if (m_TotalStars > 0) {
-                        m_TalentLevels[route]++;
+                        GameData::GetInstance().talentLevels[route]++;
                         m_TotalStars--;
-                        LOG_INFO("Route {} Upgraded to Level {}!", route, m_TalentLevels[route]);
+                        LOG_INFO("Route {} Upgraded to Level {}!", route, GameData::GetInstance().talentLevels[route]);
                     } else {
                         LOG_INFO("Not enough stars!");
                     }
@@ -122,7 +122,7 @@ void UpgradeMenu::Draw() {
 
     // 4. 雙層迴圈繪製 6 條路線的所有層級天賦與對應的星星標籤
     for (int route = 0; route < 6; ++route) {
-        int activeLv = m_TalentLevels[route]; // 該路線當前點到的等級 (0 ~ 5)
+        int activeLv = GameData::GetInstance().talentLevels[route];
 
         for (int lv = 0; lv < 5; ++lv) {
             Util::Transform iconT;

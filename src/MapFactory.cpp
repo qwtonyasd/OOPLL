@@ -41,7 +41,18 @@ std::shared_ptr<Map> MapFactory::CreateLevel(int levelId) {
         };
 
         addW({Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN}, 1.2f);
+        addW(std::vector<Enemy::Type>(6, Enemy::Type::GOBLIN), 0.8f);
+        addW(std::vector<Enemy::Type>(9, Enemy::Type::GOBLIN), 0.8f);
+        addW({Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::GOBLIN, Enemy::Type::ORC}, 1.0f);
+        addW({Enemy::Type::ORC, Enemy::Type::ORC, Enemy::Type::ORC}, 1.5f);
 
+        // 混合波次 (Wave 6)
+        WaveConfig w6; float d6 = 0;
+        for(int i=0; i<10; i++) { w6.subWaves.emplace_back(randomRoute(0, 4), std::vector<Enemy::Type>{Enemy::Type::GOBLIN}, d6); d6 += 0.7f; }
+        for(int i=0; i<4; i++) { w6.subWaves.emplace_back(randomRoute(0, 4), std::vector<Enemy::Type>{Enemy::Type::ORC}, d6); d6 += 1.2f; }
+        config.waves.push_back(w6);
+
+        addW(std::vector<Enemy::Type>(16, Enemy::Type::GOBLIN), 0.6f);
     }
     // ==================== Level 2 ====================
     else if (levelId == 2) {

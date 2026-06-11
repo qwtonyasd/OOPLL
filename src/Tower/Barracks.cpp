@@ -15,8 +15,15 @@ Barracks::Barracks(glm::vec2 pos, const std::vector<glm::vec2>& route)
 
     // 2. 套用 Level 1 數據：這會將 m_Cost 初始化為 110 (升級價)
     ApplyBaseStats(m_BarracksStats[0]);
+
     m_SoldierHP = 50.0f; // 初始血量
     m_SoldierDamage = m_BarracksStats[0].damage;
+
+    // 🆕 【增加這段】：初始建造時套用天賦加成（兵營固定對應 Index 1）
+    auto& gd = GameData::GetInstance();
+    int talentLv = gd.talentLevels[1];
+    m_SoldierHP *= gd.GetBarrackHP(talentLv);
+    m_SoldierDamage *= gd.GetBarrackDamage(talentLv);
 
     // 3. 生成初始小兵
     for (int i = 0; i < m_MaxSoldiers; ++i) {
@@ -105,6 +112,8 @@ void Barracks::SpawnSoldier(int slotIndex) {
     genericInfantry.meleeRange = 20.0f;
     genericInfantry.attackCooldown = 0.6f;
 
+    LOG_INFO("Spawn Soldier [Slot {}] - HP: {}, Atk: {}~{}", slotIndex, m_SoldierHP, genericInfantry.minDamage, genericInfantry.maxDamage);
+
     // 2. 直接生成
     m_Slots[slotIndex].soldier = std::make_shared<Soldier>(
         spawnPos,
@@ -124,9 +133,9 @@ void Barracks::Upgrade() {
         std::string newTowerPath = m_BarracksStats[m_Level - 1].baseSpritePath;
         SetDrawable(std::make_shared<Util::Image>(newTowerPath));
 
-        // 提升小兵基礎能力值
-        m_SoldierHP += 20.0f;
-        m_SoldierDamage = m_BarracksStats[m_Level - 1].damage;
+        // 🟢 修改為以下這段：精確還原當前等級的白板基礎值，再重新乘上天賦
+        float baseHP = 50.0f + static_cast<float>(m_Level - 1) * 20.0f; // Lv1=50, Lv2=70, Lv3=90
+        float baseDamage = m_BarracksStats[m_Level - 1].damage;
 
         // 升級時立即重生成活的小兵
         for (int i = 0; i < m_MaxSoldiers; ++i) {

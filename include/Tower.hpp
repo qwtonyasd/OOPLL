@@ -16,6 +16,34 @@
 
 class Tower : public Util::GameObject {
 public:
+
+    bool IsSellClicked(const glm::vec2& mousePos) {
+        if (!m_IsSelected) return false;
+        glm::vec2 sellBtnPos = m_Transform.translation + glm::vec2(0.0f, -55.0f);
+        return glm::distance(mousePos, sellBtnPos) < 25.0f; // 25.0f 為按鈕判定半徑
+    }
+
+    // 🆕 【增加】取得這座塔當前價值的 60% 作為退款
+    // 🟢 【修改】改為動態呼叫虛擬函式 GetTotalCost() 來計算 60% 退款
+    int GetSellRefund() const {
+        return static_cast<int>(GetTotalCost() * 0.6f);
+    }
+
+    virtual int GetTotalCost() const {
+        return 70;
+    }
+    virtual bool IsSkillClicked(const glm::vec2& /*mousePos*/) {
+        return false;
+    }
+
+    virtual int GetClickedSkillIndex(const glm::vec2& /*mousePos*/) {
+        return -1;
+    }
+
+    virtual void BuySkill(int /*skillIndex*/) {
+        // 預設什麼都不做，讓升到 Lv4 的 ArcherTower 去覆寫它
+    }
+
     struct TowerStats {
         float range;
         float attackInterval;
@@ -188,6 +216,7 @@ protected:
     float m_Range, m_Cooldown, m_Damage;
     float m_Timer = 0.0f;
     int m_Cost;
+    int m_TotalSpent = 0; // 🆕 【增加這一行】追蹤此塔累積花費（初始費 + 歷次升級費）
     int m_Level = 1;
     int m_MaxLevel; // 已移除 const，現在可在建構子中賦值
 

@@ -9,7 +9,7 @@
 #include "Util/Image.hpp"
 #include "Util/Transform.hpp"
 #include "Util/TransformUtils.hpp"
-
+#include "GameData.hpp"
 class UpgradeMenu {
 public:
     UpgradeMenu();
@@ -59,7 +59,6 @@ private:
 
     // --- 星數與天賦等級系統 ---
     int m_TotalStars = 15;        // 初始可用總星數
-    std::vector<int> m_TalentLevels = {0, 0, 0, 0, 0, 0};
     const int m_MaxLevel = 5;
 };
 
