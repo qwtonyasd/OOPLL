@@ -79,7 +79,16 @@ void App::HandleSelectLevel() {
         ChangeMusic(MusicState::GAME_PLAY);
     }
     else if (selected == -1) {
-        LOG_INFO("Opening Upgrade Menu...");
+        // 1. 計算目前累積的所有星星總數
+        int totalStars = 0;
+        for (const auto& lv : m_LevelProgress) {
+            totalStars += lv.stars;
+        }
+
+        // 2. 將計算好的總星數傳入 UpgradeMenu
+        m_UpgradeMenu->SetTotalEarnedStars(totalStars);
+
+        LOG_INFO("Opening Upgrade Menu... Total Stars: {}", totalStars);
         m_UpgradeMenu->SetVisible(true);
     }
 }

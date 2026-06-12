@@ -11,6 +11,14 @@
             return instance;
         }
 
+        int GetSpentStars() const {
+            int spent = 0;
+            for (int i = 0; i < 6; ++i) {
+                spent += talentLevels[i];
+            }
+            return spent;
+        }
+
         // 儲存 6 種升級項的等級 (0-5)
         // 預設對應：0:箭塔, 1:法師塔, 2:兵營, 3:砲塔, 4:火球術, 5:援軍
         int talentLevels[6] = {0, 0, 0, 0, 0, 0};

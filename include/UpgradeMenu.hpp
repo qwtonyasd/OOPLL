@@ -9,9 +9,11 @@
 #include "Util/Image.hpp"
 #include "Util/Transform.hpp"
 #include "Util/TransformUtils.hpp"
+#include "Util/Text.hpp"
 #include "GameData.hpp"
 class UpgradeMenu {
 public:
+    void SetTotalEarnedStars(int stars) { m_TotalEarned = stars; }
     UpgradeMenu();
     void Update(float dt);
     void Draw();
@@ -20,6 +22,11 @@ public:
     bool IsVisible() const { return m_IsVisible; }
 
 private:
+    std::unique_ptr<Util::Text> m_StarText; // 用來存放當前的文字物件
+    int m_LastStars = -1;                   // 用來記錄上一次的數
+
+    int m_TotalEarned = 0; // 由 App 在開啟選單時傳入
+
     // 透過死座標陣列查表取得精確位置的輔助函式
     glm::vec2 GetIconPosition(int routeIndex, int levelIndex) const;
 

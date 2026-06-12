@@ -2,6 +2,7 @@
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
+#include <map> // 🆕 引入 map 用於優化文字快取
 
 UpgradeMenu::UpgradeMenu() {
     // 1. 載入基本面版素材
@@ -62,21 +63,22 @@ glm::vec2 UpgradeMenu::GetIconPosition(int routeIndex, int levelIndex) const {
 void UpgradeMenu::Update([[maybe_unused]] float dt) {
     if (!m_IsVisible) return;
 
+    int available = m_TotalEarned - GameData::GetInstance().GetSpentStars();
     glm::vec2 mousePos = Util::Input::GetCursorPosition();
 
     if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
-        // 檢查 DONE 按鈕點擊
+
+        // 檢查 DONE 按鈕
         if (glm::distance(mousePos, m_DoneBtnPos) < 45.0f) {
             LOG_INFO("Closing Upgrade Menu");
             m_IsVisible = false;
             return;
         }
 
-        // 檢查 RESET 按鈕點擊
+        // 檢查 RESET 按鈕
         if (glm::distance(mousePos, m_ResetBtnPos) < 45.0f) {
             LOG_INFO("Reset All Talents!");
             for (int i = 0; i < 6; ++i) {
-                GameData::GetInstance().totalStars += GameData::GetInstance().talentLevels[i];
                 GameData::GetInstance().talentLevels[i] = 0;
             }
             return;
@@ -85,12 +87,13 @@ void UpgradeMenu::Update([[maybe_unused]] float dt) {
         // 偵測點擊天賦格子
         for (int route = 0; route < 6; ++route) {
             int currentLv = GameData::GetInstance().talentLevels[route];
+
             if (currentLv < m_MaxLevel) {
                 glm::vec2 btnPos = GetIconPosition(route, currentLv);
+
                 if (glm::distance(mousePos, btnPos) < 28.0f) {
-                    if (m_TotalStars > 0) {
+                    if (available > 0) {
                         GameData::GetInstance().talentLevels[route]++;
-                        m_TotalStars--;
                         LOG_INFO("Route {} Upgraded to Level {}!", route, GameData::GetInstance().talentLevels[route]);
                     } else {
                         LOG_INFO("Not enough stars!");
@@ -123,7 +126,6 @@ void UpgradeMenu::Draw() {
     // 4. 雙層迴圈繪製 6 條路線的所有層級天賦與對應的星星標籤
     for (int route = 0; route < 6; ++route) {
         int activeLv = GameData::GetInstance().talentLevels[route];
-
         for (int lv = 0; lv < 5; ++lv) {
             Util::Transform iconT;
             glm::vec2 iconPos = GetIconPosition(route, lv);
@@ -132,18 +134,14 @@ void UpgradeMenu::Draw() {
 
             m_TalentIcons[route][lv]->Draw(Util::ConvertToUniformBufferData(iconT, m_TalentIcons[route][lv]->GetSize(), 53.0f));
 
-            // 🆕 繪製右下角的星數小標籤框 (4163 或 4168)
             Util::Transform starTagT;
-            // 將小標籤框定位在圖標右下角 (向右下稍微偏移)
             starTagT.translation = iconPos + glm::vec2(18.0f, -18.0f);
             starTagT.scale = {1.0f, 1.0f};
 
             if (lv < activeLv) {
-                // 已升級解鎖的部分：畫 4163.png（有黃星），並寫上固定對應這格的等級文字 (lv + 1)
                 m_LvBgActive->Draw(Util::ConvertToUniformBufferData(starTagT, m_LvBgActive->GetSize(), 54.0f));
                 DrawText(std::to_string(lv + 1), iconPos + glm::vec2(25.0f, -20.0f), 0.5f);
             } else {
-                // 尚未升級變灰的部分：畫 4168.png（灰星），同樣標記這格原本對應的等級數值
                 m_LvBgInactive->Draw(Util::ConvertToUniformBufferData(starTagT, m_LvBgInactive->GetSize(), 54.0f));
                 DrawText(std::to_string(lv + 1), iconPos + glm::vec2(25.0f, -20.0f), 0.5f);
             }
@@ -159,21 +157,72 @@ void UpgradeMenu::Draw() {
     resetT.translation = m_ResetBtnPos;
     m_BtnReset->Draw(Util::ConvertToUniformBufferData(resetT, m_BtnReset->GetSize(), 52.0f));
 
-    // 6. 🆕 組合繪製左下角總星數狀態列 (3393 與 3394)
-    // 先畫黑色斜角底板 (3393.png)
+    // 6. 繪製左下角總星數狀態列 (3393 與 3394)
     Util::Transform starBarT;
     starBarT.translation = m_TotalStarPos;
     m_StarBgBar->Draw(Util::ConvertToUniformBufferData(starBarT, m_StarBgBar->GetSize(), 51.0f));
 
-    // 再把黃色大星星 (3394.png) 疊在底板的偏左位置
     Util::Transform totalStarT;
     totalStarT.translation = m_TotalStarPos + glm::vec2(-40.0f, 0.0f);
     m_StarIcon->Draw(Util::ConvertToUniformBufferData(totalStarT, m_StarIcon->GetSize(), 52.0f));
 
-    // 在大星星的右邊繪製目前剩餘總星數文字（例如：15）
-    DrawText(std::to_string(m_TotalStars), m_TotalStarPos + glm::vec2(10.0f, -5.0f), 1.0f);
+    // 7. 計算最新可用星星並繪製
+    int available = m_TotalEarned - GameData::GetInstance().GetSpentStars();
+    // 💡 註解：刪除了原本這裡會重複呼叫且降低效能的 DrawText 行，統一交由下方的 m_StarText 處理。
+
+    // 如果數字跟上次不一樣，才重新建立可用星數的文字物件
+    if (available != m_LastStars) {
+        m_LastStars = available;
+
+        m_StarText = std::make_unique<Util::Text>(
+            "../PTSD/assets/sprites/images/fonts/7_Comic Book.ttf",
+            36,
+            std::to_string(available),
+            Util::Color(glm::vec4(255.0f, 255.0f, 255.0f, 255.0f))
+        );
+    }
+
+    // 繪製可用星數文字 (加上嚴格的安全檢查)
+    if (m_StarText && m_StarText->GetSize().x > 0) {
+        Util::Transform t;
+        t.translation = m_TotalStarPos + glm::vec2(10.0f, -5.0f);
+        t.scale = {1.0f, 1.0f};
+
+        m_StarText->Draw(Util::ConvertToUniformBufferData(t, m_StarText->GetSize(), 55.0f));
+    }
 }
 
 void UpgradeMenu::DrawText(const std::string& text, const glm::vec2& position, float scale) {
-    // 記得在這裡對接到你專案的字型渲染函式（例如 ImGui 或是自訂的 Text GameObject 喔！）
+    // 🛑 安全檢查：如果是空字串，直接返回，避免引發 Text has zero width 崩潰
+    if (text.empty()) return;
+
+    // 🚀 【效能優化核心】使用 static map 作為文字快取池
+    static std::map<std::string, std::unique_ptr<Util::Text>> textCache;
+
+    // 如果該文字（例如 "1", "2" 等）尚未被快取過，才載入並建立它
+    if (textCache.find(text) == textCache.end()) {
+        auto tempText = std::make_unique<Util::Text>(
+            "../PTSD/assets/sprites/images/fonts/7_Comic Book.ttf",
+            36,
+            text,
+            Util::Color(glm::vec4(1.0f))
+        );
+
+        // 確保成功建立且寬度大於 0 才寫入快取
+        if (tempText && tempText->GetSize().x > 0) {
+            textCache[text] = std::move(tempText);
+        } else {
+            return; // 建立失敗防崩潰
+        }
+    }
+
+    // 從快取池直接提取文字物件進行繪製，效能極高
+    auto& targetText = textCache[text];
+    if (targetText && targetText->GetSize().x > 0) {
+        Util::Transform t;
+        t.translation = position;
+        t.scale = {scale, scale};
+
+        targetText->Draw(Util::ConvertToUniformBufferData(t, targetText->GetSize(), 55.0f));
+    }
 }
