@@ -1,3 +1,4 @@
+#pragma once
 #ifndef EGG_HPP
 #define EGG_HPP
 
@@ -18,11 +19,12 @@ public:
           m_HatchTimer(0.0f),
           m_SpawnPos(spawnPos) {
 
-        m_Transform.translation = spawnPos;
+        (void)speed;
+        (void)spiderMoveAnis;
 
-        // 🎯 需求修正：將原本由張數計算出的孵化時間乘以 2 倍
+        m_Transform.translation = spawnPos;
         m_HatchDuration = (eggHatchPaths.size() * 0.045f) * 2.0f;
-        if (m_HatchDuration < 2.0f) m_HatchDuration = 4.0f; // 安全保底同步拉長
+        if (m_HatchDuration < 2.0f) m_HatchDuration = 4.0f;
     }
 
     static std::vector<std::shared_ptr<Enemy>> s_SpawnQueue;
@@ -37,27 +39,40 @@ public:
     }
 
     void Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) override {
-        if (m_HP <= 0) {
-            if (m_CurrentState != State::DEATH) OnDeath();
+        UpdatePoison(dt);
+
+        // 如果被打死，走原本 Enemy 的死亡更新
+        if (m_HP <= 0 || m_CurrentState == State::DEATH) {
+            Enemy::Update(enemies, dt);
             return;
         }
+
+        // 🎯 修正 1：刪除 m_MoveRightAni->Update(); 避免 private 存取錯誤
+        // PTSD 框架會自動透過場景樹更新動畫，不需手動呼叫。
 
         m_Transform.translation = m_SpawnPos;
         m_HatchTimer += dt;
 
         if (m_HatchTimer >= m_HatchDuration) {
             Hatch(enemies);
-            m_HP = -999.0f; // 破殼，蛋蒸發
-            return;
+            m_HP = 0.0f;
+            SetState(State::DEATH);
         }
+    }
 
-        // 🎯 核心修正：不再呼叫 Enemy::Update(enemies, dt) 避免路徑節點在背景被偷偷吃掉。
-        // 我們手動更新動畫器 (Animator) 的時間，確保蛋的孵化動畫依然會動，但絕對不更新尋路。
-        // (註：如果 PTSD 框架的動畫更新是綁在父類別的其他函式，請保留此處，由 Egg.cpp 重新修正剩餘路徑擷取)
+    // 🎯 修正 2：移除 override 關鍵字（因為基底類別沒有這個虛擬函式）
+    // 另外提供外接介面供 App.cpp 檢查這個蛋是否該被清掉
+    bool IsEggReadyToRemove() {
+        // 如果是孵化時間到了，或者血量歸零且原本的死亡判定過了
+        if (m_HatchTimer >= m_HatchDuration) {
+            return true;
+        }
+        // 如果是被打死的，因為沒有基底虛擬函式，直接看血量歸零即可
+        return m_HP <= 0;
     }
 
     void Draw() override {
-        if (m_HP <= 0) return;
+        if (m_CurrentState == State::DEATH && m_HatchTimer >= m_HatchDuration) return;
         Enemy::Draw();
     }
 

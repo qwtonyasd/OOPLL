@@ -75,6 +75,6 @@ protected:
 
     bool m_FacingRight = true;
 
-    // 🎯 新增：每個士兵獨立擁有的高靈敏尋敵計時器（移除 static 隱患）
+    // 每個士兵獨立的高靈敏度尋敵更新計時器
     float m_ReScanTimer = 0.0f;
 };

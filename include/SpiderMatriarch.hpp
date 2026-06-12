@@ -20,7 +20,6 @@ public:
 
         m_SpawnTimer += dt;
         if (m_SpawnTimer >= m_SpawnCooldown) {
-            // 🎯 直接把實時的 enemies 陣列丟進去產卵，完全不需要 m_LevelEnemyList 了！
             SpawnEgg(enemies);
             m_SpawnTimer = 0.0f;
         }
@@ -28,9 +27,8 @@ public:
 
 private:
     float m_SpawnTimer = 0.0f;
-    float m_SpawnCooldown = 5.0f; // 改為你需要的 5 秒冷卻
+    float m_SpawnCooldown = 5.0f; // 5 秒產卵一次
 
-    // 🎯 傳入實時安全引用
     void SpawnEgg(std::vector<std::shared_ptr<Enemy>>& enemies);
 };
 

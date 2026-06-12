@@ -33,7 +33,7 @@ void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) {
         return;
     }
 
-    // 高靈敏尋敵機制
+    // 每 0.02 秒獨立高靈敏度掃描一次戰場
     if (m_CurrentState == State::IDLE || m_CurrentState == State::MOVE_TO_RALLY) {
         SearchForEnemy(enemies);
     }
@@ -45,10 +45,10 @@ void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) {
         }
     }
 
-    // 防守防線限制：放寬至 180 像素，並給予撤退緩衝區防止邊界抖動
+    // 防守線拉扯限制：給予寬容的撤退緩衝空間 (195.0f) 避免卡在邊界劇烈抖動
     if (m_TargetEnemy) {
         float distToRally = glm::distance(m_RallyPoint, m_TargetEnemy->GetPosition());
-        if (distToRally > 195.0f) { // 允許 15 像素的大幅拉扯緩衝區
+        if (distToRally > 195.0f) {
             ReleaseEnemy();
             SetState(State::MOVE_TO_RALLY);
         }
@@ -105,7 +105,7 @@ void Soldier::ChaseEnemy(float dt) {
 
     float dist = glm::distance(m_Transform.translation, m_TargetEnemy->GetPosition());
 
-    // 🎯 緩衝區設計：只有進入嚴格的近戰範圍，才切換至 BLOCKING 進行阻擋
+    // 嚴格進入近戰攻擊距離後，才觸發 BLOCKING 阻擋狀態
     if (dist <= m_Config.meleeRange) {
         if (!m_TargetEnemy->IsBlocked()) {
             m_TargetEnemy->SetBlocked(true, shared_from_this());
@@ -130,7 +130,7 @@ void Soldier::PerformAttack(float dt) {
 
     float dist = glm::distance(m_Transform.translation, m_TargetEnemy->GetPosition());
 
-    // 🎯 遲滯現象修復：允許怪物拉開到近戰範圍外 + 15 像素，才退回 CHASE。防止在極限邊緣原地瘋狂抖動
+    // 遲滯現象防震盪：允許怪拉開到近戰距離外 + 15.0f 像素，才退回 CHASE 狀態，徹底修正發抖問題
     if (dist > m_Config.meleeRange + 15.0f) {
         ReleaseEnemy();
         SetState(State::CHASE);
@@ -168,7 +168,7 @@ void Soldier::MoveTowardsRallyPoint(float dt) {
 void Soldier::SetState(State newState) {
     if (m_CurrentState == newState && newState != State::IDLE) return;
 
-    // 🎯 狀態切換平滑化：如果是戰鬥狀態之間的微調切換 (CHASE <-> BLOCKING)，保留計時器和動畫幀，避免畫面抽搐
+    // 平滑狀態過渡：如果是戰鬥狀態間互切 (CHASE <-> BLOCKING)，不中斷並重置動畫計時器
     bool isCombatTransition = (m_CurrentState == State::CHASE && newState == State::BLOCKING) ||
                               (m_CurrentState == State::BLOCKING && newState == State::CHASE);
 
@@ -188,7 +188,6 @@ void Soldier::SetState(State newState) {
         }
         SetDrawable(std::make_shared<Util::Image>(m_Config.spriteRootPath + std::to_string(m_FrameIndex) + ".png"));
     } else {
-        // 如果是戰鬥轉換，僅將 FrameIndex 校正到對應動畫組的起點，不清除 m_AnimTimer，確保平滑過渡
         if (newState == State::BLOCKING) m_FrameIndex = m_Config.atkStart;
         else if (newState == State::CHASE) m_FrameIndex = m_Config.walkStart;
     }
@@ -250,9 +249,6 @@ void Soldier::ReleaseEnemy() {
     m_AttackTimer = 0.0f;
 }
 
-// =========================================================================
-// 🎯 智慧尋敵升級版：引入「喜好偏向紅利」防止目標反覆橫跳
-// =========================================================================
 void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
     std::shared_ptr<Enemy> bestTarget = nullptr;
     float alertRange = 160.0f;
@@ -266,9 +262,7 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
         float distToMe = glm::distance(m_Transform.translation, enemy->GetPosition());
         float distToRally = glm::distance(m_RallyPoint, enemy->GetPosition());
 
-        // 🎯 舊愛最美原則 (Target Stickiness)：
-        // 如果這隻怪正是目前鎖定的目標，在計算距離時偷偷扣除 30 像素。
-        // 這意味著除非新怪物比目前的目標近了 30 像素以上，否則士兵絕對不會分心換目標！
+        // 舊愛最美紅利 (Target Stickiness)：當前目標判定距離扣 30 像素，完美遏制頻繁更換目標引發的抖動
         float scoreDist = distToMe;
         if (enemy == m_TargetEnemy) {
             scoreDist -= 30.0f;
@@ -283,7 +277,7 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
         }
     }
 
-    // 分散攔截決策
+    // 分兵與集體圍剿決策優先序
     if (!completelyFreeEnemies.empty()) {
         auto minIt = std::min_element(completelyFreeEnemies.begin(), completelyFreeEnemies.end(),
             [](const auto& a, const auto& b) { return a.second < b.second; });
@@ -295,9 +289,7 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
         bestTarget = minIt->first;
     }
 
-    // 確定目標套用
     if (bestTarget) {
-        // 如果我是主要肉盾正在卡著怪，除非怪死掉，否則絕對不換目標
         if (m_TargetEnemy != bestTarget && !m_IsMainBlocker) {
             ReleaseEnemy();
             EngageTarget(bestTarget);
@@ -333,6 +325,5 @@ void Soldier::Upgrade(const SoldierConfig& newConfig) {
     if (m_HP > 0) {
         SetDrawable(std::make_shared<Util::Image>(m_Config.spriteRootPath + std::to_string(m_FrameIndex) + ".png"));
     }
-
     m_Transform.scale.x = m_FacingRight ? 1.0f : -1.0f;
 }

@@ -6,7 +6,7 @@
 #include "Util/Time.hpp"
 #include "Util/Logger.hpp"
 #include "GameManager.hpp"
-#include "Egg.hpp" // 修正：加入 Egg 標頭檔以支援 ClearSpawnQueue
+#include "Egg.hpp"
 
 void App::Start() {
     LOG_TRACE("App Started");
@@ -22,9 +22,8 @@ void App::Start() {
 
     m_UpgradeMenu = std::make_unique<UpgradeMenu>();
 
-    // 初始化 5 個關卡的狀態
     m_LevelProgress.resize(5);
-    m_LevelProgress[0].unlocked = true; // 預設第一關解鎖
+    m_LevelProgress[0].unlocked = true;
     for (size_t i = 1; i < 5; ++i) {
         m_LevelProgress[i].unlocked = false;
         m_LevelProgress[i].stars = 0;
@@ -71,7 +70,6 @@ void App::Update() {
 }
 
 void App::HandleSelectLevel() {
-    // 傳入完整的關卡狀態 vector
     int selected = m_WorldMap->Update(m_LevelProgress);
 
     if (selected > 0) {
@@ -92,13 +90,11 @@ void App::HandleGamePlay() {
     if (dt > 0.1f) dt = 0.016f;
     auto currentMap = m_MapManager->GetCurrentMap();
 
-    // 1. 即時戰敗處理
     if (m_IsInGame && (m_IsWaveActive || !m_Enemies.empty()) && gm.GetHealth() <= 0 && !m_VictoryMenu->IsVisible()) {
         m_VictoryMenu->SetVisible(true, 0);
         ChangeMusic(MusicState::END_GAME);
     }
 
-    // 2. 結算面板點擊響應
     if (m_VictoryMenu->IsVisible()) {
         m_VictoryMenu->Update();
 
@@ -114,18 +110,12 @@ void App::HandleGamePlay() {
             m_VictoryMenu->SetVisible(false, 0);
             m_VictoryMenu->ResetFlags();
             ChangeMusic(MusicState::MAIN_MENU);
-
-            // 🎯 重置大地圖旗幟動畫計時器，讓動畫重新完整播放一次
             m_WorldMap->ResetAnimation();
             return;
         }
-
         goto RENDER_STAGE;
     }
 
-    // =========================================================================
-    // 💡 遊戲主更新邏輯
-    // =========================================================================
     m_SpellManager->Update(dt, m_Enemies);
 
     {
@@ -156,33 +146,23 @@ void App::HandleGamePlay() {
                     }
                 }
 
-                // 🎉 通關所有波次判定 🎉
                 if (m_PendingSubWaves.empty() && m_Enemies.empty()) {
                     m_IsWaveActive = false;
                     if (gm.GetCurrentWave() < static_cast<int>(m_Waves.size())) {
                         gm.NextWave();
                     } else {
-                        // 🎯 18血以上(含)皆為 3 星的評等邏輯
                         int finalHP = gm.GetHealth();
                         int calculatedStars = 1;
 
-                        if (finalHP >= 18) {
-                            calculatedStars = 3;      // 18、19、20 血都是 3 星
-                        }
-                        else if (finalHP >= 10) {
-                            calculatedStars = 2;      // 10 ~ 17 血為 2 星
-                        }
-                        else {
-                            calculatedStars = 1;      // 1 ~ 9 血為 1 星
-                        }
+                        if (finalHP >= 18)       calculatedStars = 3;
+                        else if (finalHP >= 10)  calculatedStars = 2;
+                        else                     calculatedStars = 1;
 
-                        // 更新當前關卡紀錄（若這次打得更好則覆蓋星數）
                         int idx = m_CurrentLevelID - 1;
                         if (calculatedStars > m_LevelProgress[idx].stars) {
                             m_LevelProgress[idx].stars = calculatedStars;
                         }
 
-                        // 解鎖下一關
                         if (m_CurrentLevelID < 5) {
                             m_LevelProgress[m_CurrentLevelID].unlocked = true;
                         }
@@ -214,70 +194,89 @@ void App::HandleGamePlay() {
             [&](auto& p) { p->Update(); return !p->IsActive(); }),
         m_Projectiles.end());
 
+    // =================================================================
+    // 🎯 核心重構區：安全拆分 Update、小蜘蛛注入、與容器過濾
+    // =================================================================
+
+    // 步驟 1：讓現有的所有怪物完整跑完本幀的邏輯更新（包含女皇產卵、蛋的孵化計時）
+    for (auto& enemy : m_Enemies) {
+        if (enemy) {
+            enemy->Update(m_Enemies, dt);
+        }
+    }
+
+    // 步驟 2：立刻釋放暫存佇列，將新孵化的小蜘蛛安全併入主追蹤清單中
+    Egg::ClearSpawnQueue(m_Enemies);
+
+    // 步驟 3：統一使用 std::remove_if 進行死屍與衝線怪物的過濾清理
     m_Enemies.erase(
         std::remove_if(m_Enemies.begin(), m_Enemies.end(),
             [&](auto& enemy) {
-                enemy->Update(m_Enemies, dt);
-                bool shouldRemove = enemy->ReachedEnd() ||
-                                   (enemy->GetHP() <= 0 && enemy->IsDeadAnimationFinished());
-                if (shouldRemove) {
-                    if (enemy->ReachedEnd()) {
-                        int damageToTake = 1;
-                        switch (enemy->GetType()) {
-                            case Enemy::Type::OGRE:
-                            case Enemy::Type::MARAUDER:
-                                damageToTake = 3;
-                                break;
-                            case Enemy::Type::SPIDER_MATRIARCH:
-                                damageToTake = 2;
-                                break;
-                            default:
-                                damageToTake = 1;
-                                break;
-                        }
-                        gm.TakeDamage(damageToTake);
-                    } else {
-                        gm.AddMoney(enemy->GetType() == Enemy::Type::GOBLIN ? 3 : 9);
+                bool reachedEnd = enemy->ReachedEnd();
+
+                if (reachedEnd) {
+                    int damageToTake = 1;
+                    switch (enemy->GetType()) {
+                        case Enemy::Type::OGRE:
+                        case Enemy::Type::MARAUDER:         damageToTake = 3; break;
+                        case Enemy::Type::SPIDER_MATRIARCH: damageToTake = 2; break;
+                        default:                            damageToTake = 1; break;
                     }
+                    gm.TakeDamage(damageToTake);
+                    return true; // 標記移除
                 }
-                return shouldRemove;
+
+                // 🎯 特殊處理：蜘蛛蛋的安全移除判定
+                if (enemy->GetType() == Enemy::Type::EGG) {
+                    auto eggPtr = std::dynamic_pointer_cast<Egg>(enemy);
+                    if (eggPtr && eggPtr->IsEggReadyToRemove()) {
+                        return true; // 時間到孵化完成，或者被打死，安全移除
+                    }
+                    return false;
+                }
+
+                // 常規怪物的死亡與擊殺獎勵金判定
+                if (enemy->GetHP() <= 0) {
+                    gm.AddMoney(enemy->GetType() == Enemy::Type::GOBLIN ? 3 : 9);
+                    return true; // 標記移除
+                }
+
+                return false; // 存活怪物保留
             }),
         m_Enemies.end());
 
-    Egg::ClearSpawnQueue(m_Enemies);
 
-    // 輸入控制管理
+    // 輸入與測試外掛控制管理
     {
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
-        // 🟢 修正：新增空白鍵「一鍵通關」測試外掛功能
-        if (Util::Input::IsKeyDown(Util::Keycode::SPACE) && !m_VictoryMenu->IsVisible()) {
-            LOG_INFO("【測試外掛】按下空白鍵，強制通關當前第 {} 關！", m_CurrentLevelID);
 
-            // 1. 斬草除根：清空所有怪活動物與即將出生的佇列
+        // 🟢 完美修正版：一鍵三星通關測試外掛 (安全解除所有士兵的目標指針，根治發呆 Bug)
+        if (Util::Input::IsKeyDown(Util::Keycode::SPACE) && !m_VictoryMenu->IsVisible()) {
+            LOG_INFO("【測試外掛】按下空白鍵，安全強制通關當前第 {} 關！", m_CurrentLevelID);
+
+            for (auto& soldier : m_ActiveReinforcements) {
+                if (soldier) {
+                    soldier->ReleaseEnemy();
+                    soldier->SetState(Soldier::State::MOVE_TO_RALLY);
+                }
+            }
+
+            m_TowerManager->ClearSelection();
             m_Enemies.clear();
             m_PendingSubWaves.clear();
             Egg::s_SpawnQueue.clear();
             m_IsWaveActive = false;
 
-
-            //三星通關
             int calculatedStars = 3;
-
-
-
-
-            // 3. 更新大世界進度紀錄
             int idx = m_CurrentLevelID - 1;
             if (calculatedStars > m_LevelProgress[idx].stars) {
                 m_LevelProgress[idx].stars = calculatedStars;
             }
 
-            // 4. 解鎖下一關
             if (m_CurrentLevelID < 5) {
                 m_LevelProgress[m_CurrentLevelID].unlocked = true;
             }
 
-            // 5. 直接彈出勝利面板與播放通關音樂
             m_VictoryMenu->SetVisible(true, 20);
             ChangeMusic(MusicState::END_GAME);
         }
@@ -316,18 +315,13 @@ void App::HandleGamePlay() {
 
                 for (auto& tower : m_TowerManager->GetTowers()) {
                     if (tower->GetIsSelected()) {
-
-                        // 1. 【優先判定】檢查有沒有點擊到 Level 4 的技能圖示
                         if (tower->IsSkillClicked(mousePos)) {
                             int skillIdx = tower->GetClickedSkillIndex(mousePos);
-                            if (skillIdx != -1) {
-                                tower->BuySkill(skillIdx);
-                            }
+                            if (skillIdx != -1) tower->BuySkill(skillIdx);
                             towerMenuHandled = true;
                             break;
                         }
 
-                        // 2. 【次要判定】原本的升級按鈕點擊
                         if (tower->IsUpgradeClicked(mousePos)) {
                             int cost = tower->GetUpgradeCost();
                             if (gm.SpendMoney(cost)) tower->Upgrade();
@@ -336,12 +330,9 @@ void App::HandleGamePlay() {
                         }
 
                         if (tower->IsSellClicked(mousePos)) {
-                            // 1. 計算退款並透過 GameManager 加錢
                             int refund = tower->GetSellRefund();
                             gm.AddMoney(refund);
-                            LOG_INFO("Tower Sold! Refunded {} gold.", refund);
 
-                            // 2. 將對應的 TowerSlot 插槽還原為「未佔用」狀態
                             for (auto& slot : m_TowerSlots) {
                                 if (glm::distance(slot->GetPosition(), tower->GetPosition()) < 1.0f) {
                                     slot->SetOccupied(false);
@@ -349,19 +340,15 @@ void App::HandleGamePlay() {
                                 }
                             }
 
-                            // 3. 從 TowerManager 中將這座塔擦除（因為後面會直接 break 結束迴圈，此處直接 erase 是安全的）
                             auto& towers = m_TowerManager->GetTowers();
                             towers.erase(std::remove(towers.begin(), towers.end(), tower), towers.end());
-
                             m_TowerManager->ClearSelection();
                             towerMenuHandled = true;
                             break;
                         }
-
                     }
                 }
 
-                // 3. 如果沒有點到任何防禦塔的 UI，才去判定點擊空地或切換選取
                 if (!towerMenuHandled) {
                     if (!m_TowerManager->HandleClick(mousePos)) {
                         bool hitSlot = false;
@@ -392,16 +379,11 @@ RENDER_STAGE:
     m_SpellManager->Draw();
     if (m_BuildMenu->IsVisible()) m_BuildMenu->Draw();
     if (m_Hud) m_Hud->Draw(m_SpellManager);
-
-    if (m_VictoryMenu->IsVisible()) {
-        m_VictoryMenu->Draw();
-    }
+    if (m_VictoryMenu->IsVisible()) m_VictoryMenu->Draw();
 
     if (Util::Input::IsKeyDown(Util::Keycode::BACKSPACE)) {
         m_IsInGame = false;
         ChangeMusic(MusicState::MAIN_MENU);
-
-        // 🎯 中途強制退出回到大地圖時，也重置動畫
         m_WorldMap->ResetAnimation();
     }
 }
