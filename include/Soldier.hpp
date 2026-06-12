@@ -41,6 +41,14 @@ public:
         return m_IsDeadAnimDone;
     }
 
+    std::shared_ptr<Enemy> GetTargetEnemy() const {
+        return m_TargetEnemy;
+    }
+
+    bool IsInCombat() const {
+        return (m_CurrentState == State::CHASE || m_CurrentState == State::BLOCKING) && m_TargetEnemy != nullptr;
+    }
+
 protected:
     void MoveTowardsRallyPoint(float dt);
     void ChaseEnemy(float dt);
@@ -65,6 +73,8 @@ protected:
     float m_TurnTimer = 0.0f;
     float m_NextTurnTime = 3.0f;
 
-    // 🎯 新增：追蹤士兵的面向狀態，防止被動畫重置
     bool m_FacingRight = true;
+
+    // 🎯 新增：每個士兵獨立擁有的高靈敏尋敵計時器（移除 static 隱患）
+    float m_ReScanTimer = 0.0f;
 };
