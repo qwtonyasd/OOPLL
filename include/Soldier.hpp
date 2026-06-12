@@ -64,4 +64,7 @@ protected:
 
     float m_TurnTimer = 0.0f;
     float m_NextTurnTime = 3.0f;
+
+    // 🎯 新增：追蹤士兵的面向狀態，防止被動畫重置
+    bool m_FacingRight = true;
 };

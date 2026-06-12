@@ -8,7 +8,7 @@ static std::random_device rd;
 static std::mt19937 gen(rd());
 
 Soldier::Soldier(glm::vec2 spawnPos, glm::vec2 rallyPoint, const SoldierConfig& config)
-    : Unit({spawnPos}, config.speed, config.maxHP), m_RallyPoint(rallyPoint), m_Config(config) { // <--- 確保這裏有 m_Config(config)
+    : Unit({spawnPos}, config.speed, config.maxHP), m_RallyPoint(rallyPoint), m_Config(config) {
 
     m_HP = m_Config.maxHP;
     m_MaxHP = m_Config.maxHP;
@@ -16,7 +16,8 @@ Soldier::Soldier(glm::vec2 spawnPos, glm::vec2 rallyPoint, const SoldierConfig& 
     m_ZIndex = 15.0f;
 
     m_FrameIndex = m_Config.walkStart;
-    // 使用成員變數 m_Config 來載入路徑
+    m_FacingRight = (m_RallyPoint.x >= spawnPos.x); // 初始化面向集結點
+
     SetDrawable(std::make_shared<Util::Image>(m_Config.spriteRootPath + std::to_string(m_FrameIndex) + ".png"));
     SetState(State::MOVE_TO_RALLY);
 }
@@ -31,9 +32,6 @@ void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) {
         return;
     }
 
-    // ========================================================
-    // 【動態尋敵與分兵時機】
-    // ========================================================
     if (m_CurrentState == State::IDLE || m_CurrentState == State::MOVE_TO_RALLY) {
         SearchForEnemy(enemies);
     }
@@ -46,18 +44,14 @@ void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) {
         }
     }
 
-    // ========================================================
-    // 【防守防線限制】修正：放寬邊界至 120.0f，防止三人陣形互相排斥
-    // ========================================================
     if (m_TargetEnemy) {
         float distToRally = glm::distance(m_RallyPoint, m_TargetEnemy->GetPosition());
-        if (distToRally > 120.0f) { // 放寬至 120 像素，確保圍毆不被強制拉回
+        if (distToRally > 120.0f) {
             ReleaseEnemy();
             SetState(State::MOVE_TO_RALLY);
         }
     }
 
-    // 狀態機執行
     switch (m_CurrentState) {
         case State::MOVE_TO_RALLY: MoveTowardsRallyPoint(dt); break;
         case State::IDLE:          UpdateIdleRotation(dt); break;
@@ -65,7 +59,7 @@ void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) {
         case State::BLOCKING:      PerformAttack(dt); break;
         case State::DEATH:         break;
     }
-    UpdateAnimation(dt);
+    UpdateAnimation(dt); // 🎯 轉向將在此函式內被強制套用
 }
 
 void Soldier::Draw() {
@@ -74,7 +68,7 @@ void Soldier::Draw() {
     Util::Transform originalTransform = m_Transform;
     m_Transform.translation.x = std::round(m_Transform.translation.x);
     m_Transform.translation.y = std::round(m_Transform.translation.y);
-    m_Transform.scale = glm::vec2(1.0f, 1.0f);
+    m_Transform.scale = glm::vec2(m_FacingRight ? 1.0f : -1.0f, 1.0f); // 確保繪製時套用正確面向
 
     if (m_Drawable) {
         glm::vec2 imgSize = m_Drawable->GetSize();
@@ -120,7 +114,9 @@ void Soldier::ChaseEnemy(float dt) {
     if (dist > m_Config.meleeRange) {
         glm::vec2 dir = glm::normalize(m_TargetEnemy->GetPosition() - m_Transform.translation);
         m_Transform.translation += dir * m_Config.speed * (dt * 60.0f);
-        m_Transform.scale.x = (dir.x > 0) ? 1.0f : -1.0f;
+
+        // 🎯 紀錄面向方向
+        m_FacingRight = (dir.x > 0);
     } else {
         if (!m_TargetEnemy->IsBlocked()) {
             m_TargetEnemy->SetBlocked(true, shared_from_this());
@@ -144,7 +140,8 @@ void Soldier::PerformAttack(float dt) {
         m_IsMainBlocker = true;
     }
 
-    m_Transform.scale.x = (m_TargetEnemy->GetPosition().x > m_Transform.translation.x) ? 1.0f : -1.0f;
+    // 🎯 攻擊時精準面向敵人 X 軸位置
+    m_FacingRight = (m_TargetEnemy->GetPosition().x > m_Transform.translation.x);
 
     m_AttackTimer += dt;
     if (m_AttackTimer >= m_Config.attackCooldown) {
@@ -160,7 +157,9 @@ void Soldier::MoveTowardsRallyPoint(float dt) {
     if (dist > 3.0f) {
         glm::vec2 dir = glm::normalize(m_RallyPoint - m_Transform.translation);
         m_Transform.translation += dir * m_Config.speed * (dt * 60.0f);
-        m_Transform.scale.x = (dir.x > 0) ? 1.0f : -1.0f;
+
+        // 🎯 紀錄面向方向
+        m_FacingRight = (dir.x > 0);
     } else {
         m_Transform.translation = m_RallyPoint;
         SetState(State::IDLE);
@@ -211,13 +210,19 @@ void Soldier::UpdateAnimation(float dt) {
 
         SetDrawable(std::make_shared<Util::Image>(m_Config.spriteRootPath + std::to_string(m_FrameIndex) + ".png"));
     }
+
+    // 🎯 【關鍵修復】不管 SetDrawable 怎麼覆蓋，都在最後一刻將正確的面向套用回 Transform
+    m_Transform.scale.x = m_FacingRight ? 1.0f : -1.0f;
 }
 
 void Soldier::UpdateIdleRotation(float dt) {
     m_TurnTimer += dt;
     if (m_TurnTimer >= m_NextTurnTime) {
         m_TurnTimer = 0.0f;
-        m_Transform.scale.x *= -1.0f;
+
+        // 🎯 改為翻轉狀態變數
+        m_FacingRight = !m_FacingRight;
+
         std::uniform_real_distribution<float> dis(2.0f, 5.0f);
         m_NextTurnTime = dis(gen);
     }
@@ -247,10 +252,8 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
     float minBlockedDist = extendedRange;
 
     for (auto& enemy : enemies) {
-        // [關鍵防禦]：這是閃退的保命符，確保進入邏輯前指標絕對有效
         if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) continue;
 
-        // 在存取 enemy->GetPosition() 之前，上面的 if 已經確保它是安全的
         float distToMe = glm::distance(m_Transform.translation, enemy->GetPosition());
         float distToRally = glm::distance(m_RallyPoint, enemy->GetPosition());
 
@@ -269,7 +272,6 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
         }
     }
 
-    // [安全性檢查]：在傳遞 bestFreeEnemy 之前，不用擔心 nullptr，因為前面的 logic 已經確保它如果被賦值就是有效的
     if (bestFreeEnemy) {
         if (m_TargetEnemy && m_TargetEnemy != bestFreeEnemy && !m_IsMainBlocker) {
             ReleaseEnemy();
@@ -290,17 +292,14 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
 }
 
 void Soldier::Upgrade(const SoldierConfig& newConfig) {
-    // 1. 備份舊的配置，用來計算當前的動畫進度百分比（可選，這裡直接重置到新狀態起點最安全）
     m_Config = newConfig;
 
-    // 2. 同步血量上限（通常升級會提升最大血量，並等額提升當前血量）
     float hpOffset = newConfig.maxHP - m_MaxHP;
     m_MaxHP = newConfig.maxHP;
     if (hpOffset > 0 && m_HP > 0) {
-        m_HP += hpOffset; // 升級時補上血量差額
+        m_HP += hpOffset;
     }
 
-    // 3. 根據當前狀態，立刻校正影格 index 到 Lv2 的圖片範圍
     switch (m_CurrentState) {
         case State::MOVE_TO_RALLY:
         case State::CHASE:         m_FrameIndex = m_Config.walkStart; break;
@@ -309,9 +308,10 @@ void Soldier::Upgrade(const SoldierConfig& newConfig) {
         case State::DEATH:         m_FrameIndex = m_Config.deadStart; break;
     }
 
-    // 4. 【最關鍵】立刻加載 Lv2 新路徑下的圖片，達成瞬間變身效果
     if (m_HP > 0) {
         SetDrawable(std::make_shared<Util::Image>(m_Config.spriteRootPath + std::to_string(m_FrameIndex) + ".png"));
     }
-}
 
+    // 升級時也確保立刻重載面向
+    m_Transform.scale.x = m_FacingRight ? 1.0f : -1.0f;
+}
