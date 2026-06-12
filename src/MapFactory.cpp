@@ -423,7 +423,7 @@ std::shared_ptr<Map> MapFactory::CreateLevel(int levelId) {
         // ==================== WAVE 11 ====================
         // 右路 2 Spider-Matriarch
         WaveConfig w11; float d11_R = 0.0f;
-        for (int i = 0; i < 20; ++i) { w11.subWaves.emplace_back(randomRoute(4, 2), std::vector<Enemy::Type>{Enemy::Type::SPIDER_MATRIARCH}, d11_R); d11_R += 4.0f; }
+        for (int i = 0; i < 2; ++i) { w11.subWaves.emplace_back(randomRoute(4, 2), std::vector<Enemy::Type>{Enemy::Type::SPIDER_MATRIARCH}, d11_R); d11_R += 4.0f; }
         config.waves.push_back(w11);
 
         // ==================== WAVE 12 ====================

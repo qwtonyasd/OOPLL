@@ -3,6 +3,7 @@
 #include "Enemy.hpp"
 #include <vector>
 #include <cmath>
+#include "GameData.hpp"
 
 class FireballSpell : public Spell {
 private:
@@ -13,13 +14,20 @@ private:
 public:
     FireballSpell(std::vector<std::shared_ptr<Enemy>>& stageEnemies)
         : Spell(20.0f, "../PTSD/assets/sprites/images/Spells/fireball_icon.png"), 
-          m_StageEnemies(stageEnemies) {}
+          m_StageEnemies(stageEnemies) {
+        // 🆕 【核心改動】在關卡初始化時，根據遊戲外的天賦等級調整數值
+        auto& gd = GameData::GetInstance();
+        int fbLevel = gd.talentLevels[4]; // 4 代表火球術
+
+        // 1. 調整傷害與半徑
+        m_Damage = 100.0f * gd.GetFireballDamage(fbLevel);
+        m_Radius = 80.0f * gd.GetFireballRadius(fbLevel);
+
+    }
 
     void Cast(glm::vec2 clickPos) override {
         if (!IsReady()) return;
 
-        // 1. 觸發火球術的視覺特效（你可以新增一個 EffectManager 來播爆炸動畫）
-        // EffectManager::Spawn("FireballExplosion", clickPos);
 
         // 2. 核心邏輯：範圍內的所有怪物通通挨打！
         for (auto& enemy : m_StageEnemies) {

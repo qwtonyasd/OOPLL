@@ -290,24 +290,28 @@ bool ArcherTower::IsSkillClicked(const glm::vec2& mousePos) {
 }
 
 void ArcherTower::BuySkill(int skillIndex) {
-    // 這裡需要你的金錢管理系統，假設你有個全域的 GameState 或資源管理類別
-    // int currentMoney = Game::GetMoney();
+    // 🟢 1. 獲取 GameManager 的單例實例
+    auto& gm = GameManager::GetInstance();
 
     if (skillIndex == 0 && !m_SkillA_Learned) { // 技能 A
-        // if (currentMoney >= SKILL_A_COST) {
-        // Game::AddMoney(-SKILL_A_COST);
-        m_SkillA_Learned = true;
-        UpdateSkillText(); // 更新文字顯示為 "OWNED"
-        LOG_INFO("Skill A Purchased!");
-        // }
+        // 🟢 2. 使用 gm.SpendMoney 自動判定並扣錢
+        if (gm.SpendMoney(SKILL_A_COST)) {
+            m_SkillA_Learned = true;
+            UpdateSkillText(); // 更新文字顯示為 "OWNED"
+            LOG_INFO("Skill A Purchased! Cost: {} gold.", SKILL_A_COST);
+        } else {
+            LOG_WARN("Not enough money to buy Skill A! Need {} gold.", SKILL_A_COST);
+        }
     }
     else if (skillIndex == 1 && !m_SkillB_Learned) { // 技能 B
-        // if (currentMoney >= SKILL_B_COST) {
-        // Game::AddMoney(-SKILL_B_COST);
-        m_SkillB_Learned = true;
-        UpdateSkillText(); // 更新文字顯示為 "OWNED"
-        LOG_INFO("Skill B Purchased!");
-        // }
+        // 🟢 3. 同理，扣除技能 B 的費用
+        if (gm.SpendMoney(SKILL_B_COST)) {
+            m_SkillB_Learned = true;
+            UpdateSkillText(); // 更新文字顯示為 "OWNED"
+            LOG_INFO("Skill B Purchased! Cost: {} gold.", SKILL_B_COST);
+        } else {
+            LOG_WARN("Not enough money to buy Skill B! Need {} gold.", SKILL_B_COST);
+        }
     }
 }
 

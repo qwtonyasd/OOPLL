@@ -6,6 +6,7 @@
 #include "Util/Time.hpp"
 #include "Util/Logger.hpp"
 #include "GameManager.hpp"
+#include "Egg.hpp" // 修正：加入 Egg 標頭檔以支援 ClearSpawnQueue
 
 void App::Start() {
     LOG_TRACE("App Started");
@@ -248,6 +249,39 @@ void App::HandleGamePlay() {
     // 輸入控制管理
     {
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
+        // 🟢 修正：新增空白鍵「一鍵通關」測試外掛功能
+        if (Util::Input::IsKeyDown(Util::Keycode::SPACE) && !m_VictoryMenu->IsVisible()) {
+            LOG_INFO("【測試外掛】按下空白鍵，強制通關當前第 {} 關！", m_CurrentLevelID);
+
+            // 1. 斬草除根：清空所有怪活動物與即將出生的佇列
+            m_Enemies.clear();
+            m_PendingSubWaves.clear();
+            Egg::s_SpawnQueue.clear();
+            m_IsWaveActive = false;
+
+
+            //三星通關
+            int calculatedStars = 3;
+
+
+
+
+            // 3. 更新大世界進度紀錄
+            int idx = m_CurrentLevelID - 1;
+            if (calculatedStars > m_LevelProgress[idx].stars) {
+                m_LevelProgress[idx].stars = calculatedStars;
+            }
+
+            // 4. 解鎖下一關
+            if (m_CurrentLevelID < 5) {
+                m_LevelProgress[m_CurrentLevelID].unlocked = true;
+            }
+
+            // 5. 直接彈出勝利面板與播放通關音樂
+            m_VictoryMenu->SetVisible(true, 20);
+            ChangeMusic(MusicState::END_GAME);
+        }
+
         if (Util::Input::IsKeyDown(Util::Keycode::NUM_1)) m_SpellManager->SelectFireball();
         if (Util::Input::IsKeyDown(Util::Keycode::NUM_2)) m_SpellManager->SelectReinforce();
         if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_RB)) m_SpellManager->CancelSelection();

@@ -4,7 +4,8 @@
 #include <vector>
 #include <memory>
 #include <iostream>
-
+#include <cmath>
+#include <GameData.hpp>
 class ReinforcementSoldier : public Soldier {
 private:
     float m_Lifetime;
@@ -40,6 +41,15 @@ public:
         peasantConfig.walkStart = 1;  peasantConfig.walkEnd = 5;
         peasantConfig.atkStart = 7;   peasantConfig.atkEnd = 9;
         peasantConfig.deadStart = 10; peasantConfig.deadEnd = 13;
+
+        // 🟢 先從 GameData 獲取第 5 項（援軍）的天賦等級
+        auto& gd = GameData::GetInstance();
+        int rfLevel = gd.talentLevels[5];
+
+        // 🟢 傳入等級，向新函式索取正確的倍率
+        float hpMult = gd.GetReinforceHP(rfLevel);
+        float dmgMult = gd.GetReinforceDamage(rfLevel);
+
 
         peasantConfig.maxHP = 30.0f;
         peasantConfig.speed = 1.6f;
