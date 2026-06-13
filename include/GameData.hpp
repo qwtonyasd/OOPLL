@@ -24,21 +24,7 @@
         int talentLevels[6] = {0, 0, 0, 0, 0, 0};
         int totalStars = 15;
 
-        // --- 統一的計算接口 (保留給法師塔、兵營等使用) ---
-        float GetMultiplier(int routeIndex, int level) {
-            switch (routeIndex) {
-                case 0:
-                    // 箭塔的升級包含退費、範圍與傷害，已改由下方專屬函式處理
-                    return 1.0f;
-                case 1: // 法師塔
-                    return std::pow(1.12f, level);
-                case 2: // 兵營
-                    return 1.0f + (level * 0.15f);
-                // ... 繼續補完其他 3 個 case
-                default:
-                    return 1.0f;
-            }
-        }
+
 
         // ==========================================
         // 🏹 針對箭塔的特定邏輯 (階梯式升級)

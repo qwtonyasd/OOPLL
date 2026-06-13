@@ -75,11 +75,11 @@ void Barracks::Update(std::vector<std::shared_ptr<Enemy>>& enemies,
 
 void Barracks::SpawnSoldier(int slotIndex) {
     glm::vec2 baseRallyPoint = MapData::GetBaseRallyPoint(m_Transform.translation);
-    glm::vec2 spawnPos = m_Transform.translation + glm::vec2(0, -10.0f);
+    //glm::vec2 spawnPos = m_Transform.translation + glm::vec2(0, -10.0f);
 
     glm::vec2 formationOffset = (slotIndex == 0) ? glm::vec2(0, 0) :
                                 (slotIndex == 1) ? glm::vec2(-20, -15) : glm::vec2(20, -15);
-
+    glm::vec2 spawnPos = baseRallyPoint + formationOffset;
     // 1. 在兵營打包給步兵的資源
     Soldier::SoldierConfig genericInfantry;
 

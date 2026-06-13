@@ -2,7 +2,7 @@
 #include "Util/Input.hpp"
 #include "Util/Keycode.hpp"
 #include "Util/Logger.hpp"
-#include <map> // 🆕 引入 map 用於優化文字快取
+#include <map>
 
 UpgradeMenu::UpgradeMenu() {
     // 1. 載入基本面版素材
@@ -19,9 +19,9 @@ UpgradeMenu::UpgradeMenu() {
     m_LvBgInactive  = std::make_shared<Util::Image>("../PTSD/assets/sprites/images/Upgrade/4168.png");
 
     // --- 🎯 底部按鈕與狀態列位置微調區 ---
-    m_DoneBtnPos   = { 160.0f, -235.0f };  // DONE 往右挪
-    m_ResetBtnPos  = { 40.0f, -235.0f };   // RESET 排在 DONE 的左邊
-    m_TotalStarPos = { -200.0f, -235.0f }; // 左下角總星數的中心點位置
+    m_DoneBtnPos   = { 160.0f, -235.0f };
+    m_ResetBtnPos  = { 40.0f, -235.0f };
+    m_TotalStarPos = { -200.0f, -235.0f };
 
     // 2. 自動化載入 6 條路線、由下往上的 30 張天賦圖標
     std::string basePath = "../PTSD/assets/sprites/images/Upgrade/";
@@ -54,6 +54,49 @@ UpgradeMenu::UpgradeMenu() {
             m_TalentIcons[route][lv] = std::make_shared<Util::Image>(fullPath);
         }
     }
+
+    // 🆕 3. 初始化天賦說明文字庫 (你可以自由修改裡面的字)
+    // 路線 0: 箭矢欄
+    m_TalentDescriptions[0][0] = "+20 Gold Archer Tower Build Refund";
+    m_TalentDescriptions[0][1] = "Level 2: +8% Range";
+    m_TalentDescriptions[0][2] = "Level 3: +10% Damage";
+    m_TalentDescriptions[0][3] = "Level 4: +5% Range";
+    m_TalentDescriptions[0][4] = "Level 5: +10% Damage";
+
+    // 路線 1: 盾牌欄
+    m_TalentDescriptions[1][0] = "Level 1: +10% Soldier HP";
+    m_TalentDescriptions[1][1] = "Level 2: +10% Damage";
+    m_TalentDescriptions[1][2] = "Level 3: +10% Soldier HP";
+    m_TalentDescriptions[1][3] = "Level 4: +10% Damage";
+    m_TalentDescriptions[1][4] = "Level 5: +5% HP & +5% Damage";
+
+    // 路線 2: 法杖欄
+    m_TalentDescriptions[2][0] = "Level 1: +10% Mage Tower Range";
+    m_TalentDescriptions[2][1] = "Level 2: +10% Damage";
+    m_TalentDescriptions[2][2] = "Level 3: +5% Range";
+    m_TalentDescriptions[2][3] = "Level 4: +10% Damage";
+    m_TalentDescriptions[2][4] = "Level 5: +5% Range & +5% Damage";
+
+    // 路線 3: 炸彈欄
+    m_TalentDescriptions[3][0] = "Level 1: +10% Splash Radius";
+    m_TalentDescriptions[3][1] = "Level 2: +10% Range";
+    m_TalentDescriptions[3][2] = "Level 3: +10% Damage";
+    m_TalentDescriptions[3][3] = "Level 4: +10% Damage";
+    m_TalentDescriptions[3][4] = "Level 5: +10% Range";
+
+    // 路線 4: 火球欄
+    m_TalentDescriptions[4][0] = "10% Fireball Damage";
+    m_TalentDescriptions[4][1] = "-15% Cooldown";
+    m_TalentDescriptions[4][2] = "Level 3: +10% Blast Radius";
+    m_TalentDescriptions[4][3] = "Level 4: +10% Damage";
+    m_TalentDescriptions[4][4] = "Level 5: +10% Blast Radius";
+
+    // 路線 5: 雙劍欄
+    m_TalentDescriptions[5][0] = "+10% Damage";
+    m_TalentDescriptions[5][1] = "+10% HP";
+    m_TalentDescriptions[5][2] = "+10% HP";
+    m_TalentDescriptions[5][3] = "+10% HP";
+    m_TalentDescriptions[5][4] = "+10% Damage!";
 }
 
 glm::vec2 UpgradeMenu::GetIconPosition(int routeIndex, int levelIndex) const {
@@ -66,8 +109,24 @@ void UpgradeMenu::Update([[maybe_unused]] float dt) {
     int available = m_TotalEarned - GameData::GetInstance().GetSpentStars();
     glm::vec2 mousePos = Util::Input::GetCursorPosition();
 
-    if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
+    // 🆕 每一影格重置懸停目標，再重新偵測
+    m_HoveredRoute = -1;
+    m_HoveredLevel = -1;
 
+    for (int route = 0; route < 6; ++route) {
+        for (int lv = 0; lv < 5; ++lv) {
+            glm::vec2 iconPos = GetIconPosition(route, lv);
+            // 偵測滑鼠跟格子的距離是否小於 28 像素 (也就是滑鼠指在上面)
+            if (glm::distance(mousePos, iconPos) < 28.0f) {
+                m_HoveredRoute = route;
+                m_HoveredLevel = lv;
+                break;
+            }
+        }
+        if (m_HoveredRoute != -1) break; // 找到了就跳出
+    }
+
+    if (Util::Input::IsKeyDown(Util::Keycode::MOUSE_LB)) {
         // 檢查 DONE 按鈕
         if (glm::distance(mousePos, m_DoneBtnPos) < 45.0f) {
             LOG_INFO("Closing Upgrade Menu");
@@ -84,21 +143,15 @@ void UpgradeMenu::Update([[maybe_unused]] float dt) {
             return;
         }
 
-        // 偵測點擊天賦格子
-        for (int route = 0; route < 6; ++route) {
-            int currentLv = GameData::GetInstance().talentLevels[route];
-
+        // 偵測點擊天賦格子 (改成只允許點擊滑鼠當前正指著的那一格)
+        if (m_HoveredRoute != -1 && m_HoveredLevel == GameData::GetInstance().talentLevels[m_HoveredRoute]) {
+            int currentLv = GameData::GetInstance().talentLevels[m_HoveredRoute];
             if (currentLv < m_MaxLevel) {
-                glm::vec2 btnPos = GetIconPosition(route, currentLv);
-
-                if (glm::distance(mousePos, btnPos) < 28.0f) {
-                    if (available > 0) {
-                        GameData::GetInstance().talentLevels[route]++;
-                        LOG_INFO("Route {} Upgraded to Level {}!", route, GameData::GetInstance().talentLevels[route]);
-                    } else {
-                        LOG_INFO("Not enough stars!");
-                    }
-                    break;
+                if (available > 0) {
+                    GameData::GetInstance().talentLevels[m_HoveredRoute]++;
+                    LOG_INFO("Route {} Upgraded to Level {}!", m_HoveredRoute, GameData::GetInstance().talentLevels[m_HoveredRoute]);
+                } else {
+                    LOG_INFO("Not enough stars!");
                 }
             }
         }
@@ -140,10 +193,10 @@ void UpgradeMenu::Draw() {
 
             if (lv < activeLv) {
                 m_LvBgActive->Draw(Util::ConvertToUniformBufferData(starTagT, m_LvBgActive->GetSize(), 54.0f));
-                DrawText(std::to_string(lv + 1), iconPos + glm::vec2(25.0f, -20.0f), 0.5f);
+                DrawText(std::to_string(+ 1), iconPos + glm::vec2(25.0f, -20.0f), 0.5f);
             } else {
                 m_LvBgInactive->Draw(Util::ConvertToUniformBufferData(starTagT, m_LvBgInactive->GetSize(), 54.0f));
-                DrawText(std::to_string(lv + 1), iconPos + glm::vec2(25.0f, -20.0f), 0.5f);
+                DrawText(std::to_string( + 1), iconPos + glm::vec2(25.0f, -20.0f), 0.5f);
             }
         }
     }
@@ -157,7 +210,7 @@ void UpgradeMenu::Draw() {
     resetT.translation = m_ResetBtnPos;
     m_BtnReset->Draw(Util::ConvertToUniformBufferData(resetT, m_BtnReset->GetSize(), 52.0f));
 
-    // 6. 繪製左下角總星數狀態列 (3393 與 3394)
+    // 6. 繪製左下角總星數狀態列
     Util::Transform starBarT;
     starBarT.translation = m_TotalStarPos;
     m_StarBgBar->Draw(Util::ConvertToUniformBufferData(starBarT, m_StarBgBar->GetSize(), 51.0f));
@@ -168,61 +221,73 @@ void UpgradeMenu::Draw() {
 
     // 7. 計算最新可用星星並繪製
     int available = m_TotalEarned - GameData::GetInstance().GetSpentStars();
-    // 💡 註解：刪除了原本這裡會重複呼叫且降低效能的 DrawText 行，統一交由下方的 m_StarText 處理。
 
-    // 如果數字跟上次不一樣，才重新建立可用星數的文字物件
     if (available != m_LastStars) {
         m_LastStars = available;
-
         m_StarText = std::make_unique<Util::Text>(
             "../PTSD/assets/sprites/images/fonts/7_Comic Book.ttf",
             36,
             std::to_string(available),
-            Util::Color(glm::vec4(255.0f, 255.0f, 255.0f, 255.0f))
+            Util::Color(255, 255, 255, 255)
         );
     }
 
-    // 繪製可用星數文字 (加上嚴格的安全檢查)
     if (m_StarText && m_StarText->GetSize().x > 0) {
         Util::Transform t;
         t.translation = m_TotalStarPos + glm::vec2(10.0f, -5.0f);
         t.scale = {1.0f, 1.0f};
-
         m_StarText->Draw(Util::ConvertToUniformBufferData(t, m_StarText->GetSize(), 55.0f));
+    }
+
+    // 🆕 8. 【核心追加功能】繪製滑鼠懸停的提示文字 (Tooltip)
+    if (m_HoveredRoute != -1 && m_HoveredLevel != -1) {
+        glm::vec2 mousePos = Util::Input::GetCursorPosition();
+
+        // 取得該格子的文字敘述
+        std::string desc = m_TalentDescriptions[m_HoveredRoute][m_HoveredLevel];
+
+        if (!desc.empty()) {
+            // 文字渲染的位置：放在滑鼠右下方一點點，避免遮擋
+            glm::vec2 textPos = mousePos + glm::vec2(25.0f, -25.0f);
+
+            // 畫出提示文字（提高 Z-Index 到 90.0f，保證飄在最上層）
+            // 這裡刻意調小字型比例 (0.45f) 讓完整敘述可以完美塞進畫面中
+            DrawTextAtZ(desc, textPos, 0.45f, 90.0f);
+        }
     }
 }
 
 void UpgradeMenu::DrawText(const std::string& text, const glm::vec2& position, float scale) {
-    // 🛑 安全檢查：如果是空字串，直接返回，避免引發 Text has zero width 崩潰
+    DrawTextAtZ(text, position, scale, 55.0f); // 預設走原來的 Z 層級
+}
+
+// 🆕 新增支援自訂 Z-Index 的 DrawText 擴充函式，專供 Tooltip 使用
+void UpgradeMenu::DrawTextAtZ(const std::string& text, const glm::vec2& position, float scale, float zIndex) {
     if (text.empty()) return;
 
-    // 🚀 【效能優化核心】使用 static map 作為文字快取池
     static std::map<std::string, std::unique_ptr<Util::Text>> textCache;
 
-    // 如果該文字（例如 "1", "2" 等）尚未被快取過，才載入並建立它
     if (textCache.find(text) == textCache.end()) {
         auto tempText = std::make_unique<Util::Text>(
             "../PTSD/assets/sprites/images/fonts/7_Comic Book.ttf",
             36,
             text,
-            Util::Color(glm::vec4(1.0f))
+            Util::Color(255, 255, 255, 255)
         );
 
-        // 確保成功建立且寬度大於 0 才寫入快取
         if (tempText && tempText->GetSize().x > 0) {
             textCache[text] = std::move(tempText);
         } else {
-            return; // 建立失敗防崩潰
+            return;
         }
     }
 
-    // 從快取池直接提取文字物件進行繪製，效能極高
     auto& targetText = textCache[text];
     if (targetText && targetText->GetSize().x > 0) {
         Util::Transform t;
         t.translation = position;
         t.scale = {scale, scale};
 
-        targetText->Draw(Util::ConvertToUniformBufferData(t, targetText->GetSize(), 55.0f));
+        targetText->Draw(Util::ConvertToUniformBufferData(t, targetText->GetSize(), zIndex));
     }
 }

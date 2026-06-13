@@ -11,6 +11,7 @@
 #include "Util/TransformUtils.hpp"
 #include "Util/Text.hpp"
 #include "GameData.hpp"
+
 class UpgradeMenu {
 public:
     void SetTotalEarnedStars(int stars) { m_TotalEarned = stars; }
@@ -22,6 +23,13 @@ public:
     bool IsVisible() const { return m_IsVisible; }
 
 private:
+    // 🆕 儲存 6 條路線、5 個等級的天賦詳細說明文字
+    std::string m_TalentDescriptions[6][5];
+
+    // 🆕 記錄當前滑鼠正懸停在線路與等級（若沒有懸停在任何格子，設為 -1）
+    int m_HoveredRoute = -1;
+    int m_HoveredLevel = -1;
+
     std::unique_ptr<Util::Text> m_StarText; // 用來存放當前的文字物件
     int m_LastStars = -1;                   // 用來記錄上一次的數
 
@@ -32,6 +40,9 @@ private:
 
     // 輔助函式：用來繪製星數或天賦標籤上的等級數字
     void DrawText(const std::string& text, const glm::vec2& position, float scale);
+
+    // ✨ 補上這一行：支援自訂 Z-Index 的文字繪製函式宣告，解決編譯錯誤！
+    void DrawTextAtZ(const std::string& text, const glm::vec2& position, float scale, float zIndex);
 
     bool m_IsVisible = false;
 

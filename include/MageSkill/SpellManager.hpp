@@ -38,6 +38,14 @@ public:
     void SelectReinforce() { if (m_ReinforceCooldownTimer <= 0.0f) m_CurrentSelectedSpell = SpellType::REINFORCE; }
     void CancelSelection() { m_CurrentSelectedSpell = SpellType::NONE; }
 
+    // ✨ 補上這個對外接口：讓關卡初始化或重開時，可以一鍵重置所有冷卻時間！
+    void Reset() {
+        m_FireballCooldownTimer = 0.0f;
+        m_ReinforceCooldownTimer = 0.0f;
+        m_ActiveFireballs.clear();        // 👈 這一行就是關鍵！
+        m_CurrentSelectedSpell = SpellType::NONE; // 同時取消任何選取狀態
+    }
+
     SpellType GetSelectedSpell() const { return m_CurrentSelectedSpell; }
     float GetFireballCooldownRatio() const { return m_FireballCooldownTimer / 15.0f; }
     float GetReinforceCooldownRatio() const { return m_ReinforceCooldownTimer / 10.0f; }

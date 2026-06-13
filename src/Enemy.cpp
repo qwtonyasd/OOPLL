@@ -19,10 +19,7 @@ Enemy::Enemy(Enemy::Type type, const std::vector<glm::vec2>& path, float speed, 
 
 void Enemy::Update(std::vector<std::shared_ptr<Enemy>>&, float dt) {
 
-    if (m_CurrentState == State::DEATH) {
-        // 不需要再呼叫 Play()，因為 OnDeath 已經呼叫過了
-        return;
-    }
+
 
     // 2. [新增] 處理毒傷邏輯
     UpdatePoison(dt); // 這才會觸發你定義的 UpdatePoison 內部的扣血
@@ -163,6 +160,5 @@ void Enemy::TakeDamage(float damage, DamageType damageType) {
 
     if (m_HP <= 0) {
         m_HP = 0;
-        OnDeath();
     }
 }

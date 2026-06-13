@@ -246,8 +246,12 @@ void App::HandleGamePlay() {
 
                 // 常規怪物的死亡與擊殺獎勵金判定
                 if (enemy->GetHP() <= 0) {
-                    gm.AddMoney(enemy->GetType() == Enemy::Type::GOBLIN ? 3 : 9);
-                    return true; // 標記移除
+                    // 🎯 核心修正：血量歸零了，但必須等到「死亡動畫播完」
+                    if (enemy->IsDeadAnimationFinished()) {
+                        gm.AddMoney(enemy->GetType() == Enemy::Type::GOBLIN ? 3 : 9); // 真正移除時才給錢，避免重複加錢
+                        return true; // 動畫播完了，安全功成身退，標記移除
+                    }
+                    return false; // 動畫還沒播完，這一幀先留著它，讓它繼續跑 Update 與 Draw
                 }
 
                 return false; // 存活怪物保留
@@ -257,6 +261,11 @@ void App::HandleGamePlay() {
 
     // 輸入與測試外掛控制管理
     {
+        if (Util::Input::IsKeyDown(Util::Keycode::R)) {
+            glm::vec2 mousePos = Util::Input::GetCursorPosition();
+            LOG_INFO("📍 滑鼠當前座標 -> X: {:.1f}, Y: {:.1f}", mousePos.x, mousePos.y);
+        }
+
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
 
         // 🟢 完美修正版：一鍵三星通關測試外掛 (安全解除所有士兵的目標指針，根治發呆 Bug)
@@ -409,7 +418,7 @@ void App::ChangeLevel(int levelId) {
     int startMoney = newMap->GetInitialMoney();
     GameManager::GetInstance().InitLevel(startMoney, 20);
     GameManager::GetInstance().SetTotalWaves(static_cast<int>(m_Waves.size()));
-
+    m_SpellManager->Reset();
     m_TowerManager->Clear();
     m_Projectiles.clear();
     m_Enemies.clear();
