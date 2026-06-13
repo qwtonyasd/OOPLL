@@ -10,12 +10,10 @@ static std::mt19937 gen(rd());
 
 Soldier::Soldier(glm::vec2 spawnPos, glm::vec2 rallyPoint, const SoldierConfig& config)
     : Unit({spawnPos}, config.speed, config.maxHP), m_RallyPoint(rallyPoint), m_Config(config) {
-
     m_HP = m_Config.maxHP;
     m_MaxHP = m_Config.maxHP;
     m_Transform.translation = spawnPos;
     m_ZIndex = 15.0f;
-
     m_FrameIndex = m_Config.walkStart;
     m_FacingRight = (m_RallyPoint.x >= spawnPos.x);
 
@@ -33,7 +31,6 @@ void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) {
         return;
     }
 
-    // 每 0.02 秒獨立高靈敏度掃描一次戰場
     if (m_CurrentState == State::IDLE || m_CurrentState == State::MOVE_TO_RALLY) {
         SearchForEnemy(enemies);
     }
@@ -45,9 +42,9 @@ void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) {
         }
     }
 
-    // 防守線拉扯限制：給予寬容的撤退緩衝空間 (195.0f) 避免卡在邊界劇烈抖動
-    if (m_TargetEnemy) {
-        float distToRally = glm::distance(m_RallyPoint, m_TargetEnemy->GetPosition());
+    // 🎯 修正：使用 lock() 安全獲取鎖定的目標
+    if (auto enemy = m_TargetEnemy.lock()) {
+        float distToRally = glm::distance(m_RallyPoint, enemy->GetPosition());
         if (distToRally > 195.0f) {
             ReleaseEnemy();
             SetState(State::MOVE_TO_RALLY);
@@ -66,7 +63,6 @@ void Soldier::Update(std::vector<std::shared_ptr<Enemy>>& enemies, float dt) {
 
 void Soldier::Draw() {
     if (m_HP <= 0 && m_IsDeadAnimDone) return;
-
     Util::Transform originalTransform = m_Transform;
     m_Transform.translation.x = std::round(m_Transform.translation.x);
     m_Transform.translation.y = std::round(m_Transform.translation.y);
@@ -80,13 +76,12 @@ void Soldier::Draw() {
 
     GameObject::Draw();
     DrawHealthBar();
-
     m_Transform = originalTransform;
 }
 
 void Soldier::EngageTarget(std::shared_ptr<Enemy> enemy) {
     if (enemy) {
-        m_TargetEnemy = enemy;
+        m_TargetEnemy = enemy; // 🎯 自動隱式轉換為 weak_ptr
         m_IsMainBlocker = false;
         SetState(State::CHASE);
     }
@@ -97,64 +92,67 @@ bool Soldier::IsAvailable() const {
 }
 
 void Soldier::ChaseEnemy(float dt) {
-    if (!m_TargetEnemy || m_TargetEnemy->GetHP() <= 0 || m_TargetEnemy->ReachedEnd()) {
+    auto enemy = m_TargetEnemy.lock();
+    // 🎯 修正：如果 lock 失敗，直接當作目標不存在，退回集合點
+    if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) {
         ReleaseEnemy();
         SetState(State::MOVE_TO_RALLY);
         return;
     }
 
-    float dist = glm::distance(m_Transform.translation, m_TargetEnemy->GetPosition());
+    float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
 
-    // 嚴格進入近戰攻擊距離後，才觸發 BLOCKING 阻擋狀態
     if (dist <= m_Config.meleeRange) {
-        if (!m_TargetEnemy->IsBlocked()) {
-            m_TargetEnemy->SetBlocked(true, shared_from_this());
+        if (!enemy->IsBlocked()) {
+            enemy->SetBlocked(true, shared_from_this());
             m_IsMainBlocker = true;
         } else {
             m_IsMainBlocker = false;
         }
         SetState(State::BLOCKING);
     } else {
-        glm::vec2 dir = glm::normalize(m_TargetEnemy->GetPosition() - m_Transform.translation);
+        glm::vec2 dir = glm::normalize(enemy->GetPosition() - m_Transform.translation);
         m_Transform.translation += dir * m_Config.speed * (dt * 60.0f);
         m_FacingRight = (dir.x > 0);
     }
 }
 
 void Soldier::PerformAttack(float dt) {
-    if (!m_TargetEnemy || m_TargetEnemy->GetHP() <= 0 || m_TargetEnemy->ReachedEnd()) {
+    auto enemy = m_TargetEnemy.lock();
+    // 🎯 修正：防禦髒指針
+    if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) {
         ReleaseEnemy();
         SetState(State::MOVE_TO_RALLY);
         return;
     }
 
-    float dist = glm::distance(m_Transform.translation, m_TargetEnemy->GetPosition());
+    float dist = glm::distance(m_Transform.translation, enemy->GetPosition());
 
-    // 遲滯現象防震盪：允許怪拉開到近戰距離外 + 15.0f 像素，才退回 CHASE 狀態，徹底修正發抖問題
     if (dist > m_Config.meleeRange + 15.0f) {
         ReleaseEnemy();
         SetState(State::CHASE);
         return;
     }
 
-    if (!m_TargetEnemy->IsBlocked()) {
-        m_TargetEnemy->SetBlocked(true, shared_from_this());
+    if (!enemy->IsBlocked()) {
+        enemy->SetBlocked(true, shared_from_this());
         m_IsMainBlocker = true;
     }
 
-    m_FacingRight = (m_TargetEnemy->GetPosition().x > m_Transform.translation.x);
+    m_FacingRight = (enemy->GetPosition().x > m_Transform.translation.x);
 
     m_AttackTimer += dt;
     if (m_AttackTimer >= m_Config.attackCooldown) {
         std::uniform_int_distribution<int> damageDis(m_Config.minDamage, m_Config.maxDamage);
-        m_TargetEnemy->TakeDamage(static_cast<float>(damageDis(gen)));
+
+        // 🎯 絕對安全的扣血：此時 enemy 是保證存活的 shared_ptr
+        enemy->TakeDamage(static_cast<float>(damageDis(gen)));
         m_AttackTimer = 0.0f;
     }
 }
 
 void Soldier::MoveTowardsRallyPoint(float dt) {
     float dist = glm::distance(m_Transform.translation, m_RallyPoint);
-
     if (dist > 3.0f) {
         glm::vec2 dir = glm::normalize(m_RallyPoint - m_Transform.translation);
         m_Transform.translation += dir * m_Config.speed * (dt * 60.0f);
@@ -168,7 +166,6 @@ void Soldier::MoveTowardsRallyPoint(float dt) {
 void Soldier::SetState(State newState) {
     if (m_CurrentState == newState && newState != State::IDLE) return;
 
-    // 平滑狀態過渡：如果是戰鬥狀態間互切 (CHASE <-> BLOCKING)，不中斷並重置動畫計時器
     bool isCombatTransition = (m_CurrentState == State::CHASE && newState == State::BLOCKING) ||
                               (m_CurrentState == State::BLOCKING && newState == State::CHASE);
 
@@ -213,14 +210,10 @@ void Soldier::UpdateAnimation(float dt) {
             m_FrameIndex = loop ? start : end;
             if (!loop) m_IsDeadAnimDone = true;
         }
-
-        if (m_FrameIndex < start || m_FrameIndex > end) {
-            m_FrameIndex = start;
-        }
+        if (m_FrameIndex < start || m_FrameIndex > end) m_FrameIndex = start;
 
         SetDrawable(std::make_shared<Util::Image>(m_Config.spriteRootPath + std::to_string(m_FrameIndex) + ".png"));
     }
-
     m_Transform.scale.x = m_FacingRight ? 1.0f : -1.0f;
 }
 
@@ -239,12 +232,12 @@ void Soldier::TakeDamage(float damage) {
 }
 
 void Soldier::ReleaseEnemy() {
-    if (m_TargetEnemy) {
+    if (auto enemy = m_TargetEnemy.lock()) {
         if (m_IsMainBlocker) {
-            m_TargetEnemy->SetBlocked(false, shared_from_this());
+            enemy->SetBlocked(false, shared_from_this());
         }
     }
-    m_TargetEnemy = nullptr;
+    m_TargetEnemy.reset(); // 🎯 弱引用清空
     m_IsMainBlocker = false;
     m_AttackTimer = 0.0f;
 }
@@ -256,15 +249,17 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
     std::vector<std::pair<std::shared_ptr<Enemy>, float>> completelyFreeEnemies;
     std::vector<std::pair<std::shared_ptr<Enemy>, float>> alreadyEngagedEnemies;
 
+    // 獲取當前鎖定目標的原始指針用於比較
+    auto currentTargetPtr = m_TargetEnemy.lock();
+
     for (auto& enemy : enemies) {
         if (!enemy || enemy->GetHP() <= 0 || enemy->ReachedEnd()) continue;
 
         float distToMe = glm::distance(m_Transform.translation, enemy->GetPosition());
         float distToRally = glm::distance(m_RallyPoint, enemy->GetPosition());
 
-        // 舊愛最美紅利 (Target Stickiness)：當前目標判定距離扣 30 像素，完美遏制頻繁更換目標引發的抖動
         float scoreDist = distToMe;
-        if (enemy == m_TargetEnemy) {
+        if (enemy == currentTargetPtr) {
             scoreDist -= 30.0f;
         }
 
@@ -277,7 +272,6 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
         }
     }
 
-    // 分兵與集體圍剿決策優先序
     if (!completelyFreeEnemies.empty()) {
         auto minIt = std::min_element(completelyFreeEnemies.begin(), completelyFreeEnemies.end(),
             [](const auto& a, const auto& b) { return a.second < b.second; });
@@ -290,11 +284,11 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
     }
 
     if (bestTarget) {
-        if (m_TargetEnemy != bestTarget && !m_IsMainBlocker) {
+        if (currentTargetPtr != bestTarget && !m_IsMainBlocker) {
             ReleaseEnemy();
             EngageTarget(bestTarget);
         }
-        else if (!m_TargetEnemy) {
+        else if (!currentTargetPtr) {
             EngageTarget(bestTarget);
         }
     } else {
@@ -307,7 +301,6 @@ void Soldier::SearchForEnemy(std::vector<std::shared_ptr<Enemy>>& enemies) {
 
 void Soldier::Upgrade(const SoldierConfig& newConfig) {
     m_Config = newConfig;
-
     float hpOffset = newConfig.maxHP - m_MaxHP;
     m_MaxHP = newConfig.maxHP;
     if (hpOffset > 0 && m_HP > 0) {

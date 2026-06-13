@@ -37,16 +37,14 @@ public:
     void TakeDamage(float damage);
     void Upgrade(const SoldierConfig& newConfig);
 
-    bool IsDeadAnimationFinished() const {
-        return m_IsDeadAnimDone;
-    }
+    bool IsDeadAnimationFinished() const { return m_IsDeadAnimDone; }
 
-    std::shared_ptr<Enemy> GetTargetEnemy() const {
-        return m_TargetEnemy;
-    }
+    // 🎯 修正：回傳 shared_ptr，內部透過 lock() 轉型
+    std::shared_ptr<Enemy> GetTargetEnemy() const { return m_TargetEnemy.lock(); }
 
+    // 🎯 修正：使用 lock() 檢查
     bool IsInCombat() const {
-        return (m_CurrentState == State::CHASE || m_CurrentState == State::BLOCKING) && m_TargetEnemy != nullptr;
+        return (m_CurrentState == State::CHASE || m_CurrentState == State::BLOCKING) && !m_TargetEnemy.expired();
     }
 
 protected:
@@ -61,7 +59,10 @@ protected:
     SoldierConfig m_Config;
     State m_CurrentState = State::IDLE;
     glm::vec2 m_RallyPoint;
-    std::shared_ptr<Enemy> m_TargetEnemy = nullptr;
+
+    // 🎯 核心修正：改用 weak_ptr，防止強引用卡死生命週期與髒指針
+    std::weak_ptr<Enemy> m_TargetEnemy;
+
     std::shared_ptr<Util::Animation> m_DeadAni;
 
     float m_AnimTimer = 0.0f;
@@ -72,9 +73,6 @@ protected:
 
     float m_TurnTimer = 0.0f;
     float m_NextTurnTime = 3.0f;
-
     bool m_FacingRight = true;
-
-    // 每個士兵獨立的高靈敏度尋敵更新計時器
     float m_ReScanTimer = 0.0f;
 };

@@ -96,7 +96,7 @@ public:
                 generatePaths("Wulf", 9, 13)
             };
             auto enemy = std::make_shared<Enemy>(type, path, 80.0f, 35.0f, moveAnis,
-                generatePaths("Shaman", 1, 12), generatePaths("Wulf", 29, 37));
+                generatePaths("Wulf", 19, 28), generatePaths("Wulf", 29, 37));
             enemy->SetResistances(Enemy::DefenseLevel::NONE, Enemy::DefenseLevel::NONE);
             return enemy;
         }
