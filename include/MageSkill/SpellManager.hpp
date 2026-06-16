@@ -42,7 +42,7 @@ public:
     void Reset() {
         m_FireballCooldownTimer = 0.0f;
         m_ReinforceCooldownTimer = 0.0f;
-        m_ActiveFireballs.clear();        // 👈 這一行就是關鍵！
+        m_ActiveFireballs.clear();
         m_CurrentSelectedSpell = SpellType::NONE; // 同時取消任何選取狀態
     }
 
