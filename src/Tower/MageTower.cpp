@@ -7,9 +7,9 @@ MageTower::MageTower(glm::vec2 pos)
             120.0f, 1.5f, 13.0f, 100, Enemy::DamageType::MAGIC) {
 
     m_MageStats = {
-        {120.0f, 1.5f, 13.0f, 110, "../PTSD/assets/sprites/images/MageTower/TowerLevel1/1.png"},
-        {140.0f, 1.4f, 25.0f, 240, "../PTSD/assets/sprites/images/MageTower/TowerLevel2/1.png"},
-        {160.0f, 1.2f, 45.0f, 0,   "../PTSD/assets/sprites/images/MageTower/TowerLevel3/1.png"}
+        {120.0f, 1.5f, 13.0f, 160, "../PTSD/assets/sprites/images/MageTower/TowerLevel1/1.png"},
+        {140.0f, 1.4f, 33.0f, 240, "../PTSD/assets/sprites/images/MageTower/TowerLevel2/1.png"},
+        {160.0f, 1.2f, 60.0f, 0,   "../PTSD/assets/sprites/images/MageTower/TowerLevel3/1.png"}
     };
 
     ApplyBaseStats(m_MageStats[0]);

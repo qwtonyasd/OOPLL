@@ -18,7 +18,7 @@ public:
             case 1: return 70;                  // 1等造價
             case 2: return 70 + 110;            // 1等 + 2等升級費 (180)
             case 3: return 70 + 110 + 160;      // 1等 + 2等 + 3等升級費 (340)
-            case 4: return 250;                 // 🎯 你提到四等總耗是 250
+            case 4: return 70 + 110 + 160 + 230;                 // 🎯 你提到四等總耗是 250
             default: return 70;
         }
     }
@@ -27,8 +27,8 @@ public:
     // 🆕 【新增】全域天賦加成計算函式宣告
     void ApplyGlobalUpgrades();
 
-    static constexpr int SKILL_A_COST = 10;
-    static constexpr int SKILL_B_COST = 10;
+    static constexpr int SKILL_A_COST = 250;
+    static constexpr int SKILL_B_COST = 250;
     bool IsSkillClicked(const glm::vec2& mousePos);
     std::shared_ptr<Enemy> FindTarget(const std::vector<std::shared_ptr<Enemy>>& enemies) override;
     // 新增此宣告

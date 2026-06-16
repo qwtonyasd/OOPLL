@@ -11,21 +11,21 @@ BombTower::BombTower(glm::vec2 pos)
 
     m_BombStats = {
         {
-            {145.0f, 2.5f, 11.0f, 10, "../PTSD/assets/sprites/images/BombTower/TowerLevel1/1.png"},
+            {145.0f, 2.5f, 11.0f, 220, "../PTSD/assets/sprites/images/BombTower/TowerLevel1/1.png"},
             "../PTSD/assets/sprites/images/BombTower/TowerLevel1/",
             "../PTSD/assets/sprites/images/BombTower/bomb/",
             "../PTSD/assets/sprites/images/BombTower/bomb/1.png",
             Projectile::MoveType::PARABOLA_SIMPLE
         },
         {
-            {160.0f, 2.3f, 22.0f, 20, "../PTSD/assets/sprites/images/BombTower/TowerLevel2/1.png"},
+            {160.0f, 2.3f, 30.0f, 320, "../PTSD/assets/sprites/images/BombTower/TowerLevel2/1.png"},
             "../PTSD/assets/sprites/images/BombTower/TowerLevel2/",
             "../PTSD/assets/sprites/images/BombTower/TowerLevel2/bomb/",
             "../PTSD/assets/sprites/images/BombTower/TowerLevel2/bomb/1.png",
             Projectile::MoveType::PARABOLA_SIMPLE
         },
         {
-            {180.0f, 2.1f, 35.0f, 0, "../PTSD/assets/sprites/images/BombTower/TowerLevel3/1.png"},
+            {180.0f, 2.1f, 60.0f, 0, "../PTSD/assets/sprites/images/BombTower/TowerLevel3/1.png"},
             "../PTSD/assets/sprites/images/BombTower/TowerLevel3/",
             "../PTSD/assets/sprites/images/BombTower/TowerLevel3/bomb/",
             "../PTSD/assets/sprites/images/BombTower/TowerLevel3/bomb/1.png",

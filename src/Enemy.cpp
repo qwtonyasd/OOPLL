@@ -106,7 +106,15 @@ void Enemy::MoveTowardsNextNode() {
     glm::vec2 diff = targetPos - m_Transform.translation;
 
     if (glm::length(diff) > 1.0f) {
-        m_Transform.translation += glm::normalize(diff) * m_Speed * dt;
+        // 1. 先計算這一影格實質移動了多遠
+        float moveDist = m_Speed * dt;
+
+        // 2. 讓怪物實際在畫面上移動
+        m_Transform.translation += glm::normalize(diff) * moveDist;
+
+        // 3. 🔥【核心修正】：把移動距離累加進去！
+        m_TotalDistanceTravelled += moveDist;
+
     } else {
         m_CurrentNodeIdx++;
     }

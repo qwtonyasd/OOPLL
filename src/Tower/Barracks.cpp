@@ -75,11 +75,13 @@ void Barracks::Update(std::vector<std::shared_ptr<Enemy>>& enemies,
 
 void Barracks::SpawnSoldier(int slotIndex) {
     glm::vec2 baseRallyPoint = MapData::GetBaseRallyPoint(m_Transform.translation);
-    //glm::vec2 spawnPos = m_Transform.translation + glm::vec2(0, -10.0f);
+
+    // ⭕【核心修正 1】：讓小兵出生在「兵營塔」的位置（稍微往下移 10 像素，看起來像走出門口）
+    glm::vec2 spawnPos = m_Transform.translation + glm::vec2(0.0f, -10.0f);
 
     glm::vec2 formationOffset = (slotIndex == 0) ? glm::vec2(0, 0) :
                                 (slotIndex == 1) ? glm::vec2(-20, -15) : glm::vec2(20, -15);
-    glm::vec2 spawnPos = baseRallyPoint + formationOffset;
+
     // 1. 在兵營打包給步兵的資源
     Soldier::SoldierConfig genericInfantry;
 
@@ -92,10 +94,9 @@ void Barracks::SpawnSoldier(int slotIndex) {
     }
     else if (m_Level == 2) {
         genericInfantry.spriteRootPath = "../PTSD/assets/sprites/images/BarracksTower/TowerLevel2/Soldier/";
-        // 對接二級小兵的 15 張圖配置
-        genericInfantry.walkStart = 1;  genericInfantry.walkEnd = 6;   // 1 ~ 6 走路
-        genericInfantry.atkStart = 7;   genericInfantry.atkEnd = 12;   // 7 ~ 12 攻擊
-        genericInfantry.deadStart = 13; genericInfantry.deadEnd = 15;  // 13 ~ 15 死亡
+        genericInfantry.walkStart = 1;  genericInfantry.walkEnd = 6;
+        genericInfantry.atkStart = 7;   genericInfantry.atkEnd = 12;
+        genericInfantry.deadStart = 13; genericInfantry.deadEnd = 15;
     }
     else { // 等級三
         genericInfantry.spriteRootPath = "../PTSD/assets/sprites/images/BarracksTower/TowerLevel3/Soldier/";
@@ -107,19 +108,22 @@ void Barracks::SpawnSoldier(int slotIndex) {
     genericInfantry.maxHP = m_SoldierHP;
     genericInfantry.minDamage = m_SoldierDamage - 1;
     genericInfantry.maxDamage = m_SoldierDamage + 1;
-    genericInfantry.speed = 1.5f;
+    genericInfantry.speed = 1.5f; // 💡 走動速度，如果覺得走太慢可以調大（例如 50.0f ~ 100.0f，看你框架的單位）
     genericInfantry.detectionRange = 80.0f;
     genericInfantry.meleeRange = 20.0f;
     genericInfantry.attackCooldown = 0.6f;
 
     LOG_INFO("Spawn Soldier [Slot {}] - HP: {}, Atk: {}~{}", slotIndex, m_SoldierHP, genericInfantry.minDamage, genericInfantry.maxDamage);
 
-    // 2. 直接生成
+    // 2. 直接生成（此時 spawnPos 是塔的位置，而 m_RallyPoint 是馬路的位置）
     m_Slots[slotIndex].soldier = std::make_shared<Soldier>(
         spawnPos,
         baseRallyPoint + formationOffset,
         genericInfantry
     );
+
+    // ⭕【核心修正 2】：生成後立刻命令小兵開始往集結點走過去
+    m_Slots[slotIndex].soldier->SetState(Soldier::State::MOVE_TO_RALLY);
 }
 
 void Barracks::Upgrade() {

@@ -3,26 +3,23 @@
 #include "GameManager.hpp"
 ArcherTower::ArcherTower(glm::vec2 pos)
     : Tower(pos, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/1.png",
-            175.0f, 0.8f, 5.0f, 70, Enemy::DamageType::PHYSICAL,4) {
+            175.0f, 0.8f, 5.0f, 70, Enemy::DamageType::PHYSICAL, 4) {
 
-    // 1. 定義三級數據：{範圍, 攻速, 傷害, 升級費用, 基座圖路徑}
+    // ⭕【核心修正】：將升級費用往上挪一格，填入「升級到下一等」的花費，最後一等填 0
     m_ArcherStats = {
-        {175.0f, 0.8f, 5.0f, 10,  "../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/1.png"},
-        {200.0f, 0.7f, 7.0f, 10, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel2/1.png"},
-        {225.0f, 0.6f, 9.0f, 160, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel3/1.png"},
-        {250.0f, 0.5f, 0.0f, 250, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel4/1.png"}
+        {175.0f, 0.8f, 5.0f, 110, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel1/1.png"}, // Lv1 升 Lv2 要 110
+        {200.0f, 0.7f, 9.0f, 160, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel2/1.png"}, // Lv2 升 Lv3 要 160
+        {225.0f, 0.6f, 15.0f, 230, "../PTSD/assets/sprites/images/ArcherTower/TowerLevel3/1.png"}, // Lv3 升 Lv4 要 230
+        {250.0f, 0.5f, 25.0f, 0,   "../PTSD/assets/sprites/images/ArcherTower/TowerLevel4/1.png"}  // Lv4 滿等無法再升，填 0
     };
 
     auto& gd = GameData::GetInstance();
     if (gd.talentLevels[0] >= 1) {
-
-        // 🟢 修改為這行，成功對接到你的 GameManager！
+        // 成功對接到你的 GameManager！
         GameManager::GetInstance().AddMoney(20);
-
         LOG_INFO("Archer Tower built! Talent Lv1 active: Refunded 20 gold.");
     }
 
-    // --- 修改核心區域開始 ---
     // 將當前等級(Lv1)的數值存入 m_BaseStats
     m_BaseStats = m_ArcherStats[0];
 
@@ -31,13 +28,9 @@ ArcherTower::ArcherTower(glm::vec2 pos)
 
     // 接著立刻呼叫全域加成，將 m_Damage 和 m_Range 覆蓋為加成後的數值
     ApplyGlobalUpgrades();
-    // --- 修改核心區域結束 ---
 
     // 2. 載入等級 1 的資源
     LoadLevelAssets();
-
-    // 註：UpdateCostText() 已經在 ApplyGlobalUpgrades 裡面呼叫過了，
-    // 這裡可以選擇保留或刪除，不影響運行。
 }
 
 void ArcherTower::LoadLevelAssets() {

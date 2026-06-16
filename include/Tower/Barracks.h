@@ -15,7 +15,6 @@ public:
             case 1: return 70;                  // 1等造價
             case 2: return 70 + 110;            // 1等 + 2等升級費 (180)
             case 3: return 70 + 110 + 160;      // 1等 + 2等 + 3等升級費 (340)
-            case 4: return 250;                 // 🎯 你提到四等總耗是 250
             default: return 70;
         }
     }

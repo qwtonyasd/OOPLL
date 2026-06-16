@@ -262,8 +262,8 @@ void App::HandleGamePlay() {
     // 輸入與測試外掛控制管理
     {
         if (Util::Input::IsKeyDown(Util::Keycode::R)) {
-            glm::vec2 mousePos = Util::Input::GetCursorPosition();
-            LOG_INFO("📍 滑鼠當前座標 -> X: {:.1f}, Y: {:.1f}", mousePos.x, mousePos.y);
+            GameManager::GetInstance().AddMoney(100);
+            LOG_INFO("get 100 coin }");
         }
 
         glm::vec2 mousePos = Util::Input::GetCursorPosition();
