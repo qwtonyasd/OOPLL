@@ -8,13 +8,7 @@ cmake_policy(SET CMP0135 NEW)
 include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
 
-FetchContent_Declare(
-        ptsd
-        URL         https://github.com/ntut-open-source-club/practical-tools-for-simple-design/archive/refs/tags/v0.2.zip
-        SOURCE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/PTSD
-)
-
-FetchContent_MakeAvailable(ptsd)
+add_subdirectory(PTSD)
 
 include(files.cmake)
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
